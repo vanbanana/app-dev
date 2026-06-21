@@ -11,6 +11,7 @@ import { Toolbar } from "./Toolbar";
 import { ZoomControl } from "./ZoomControl";
 import { HistoryPanel } from "./HistoryPanel";
 import { SettingsPanel } from "./SettingsPanel";
+import { ImageActionBar } from "./ImageActionBar";
 import { useOpenPanel } from "@/lib/ui-store";
 
 const customShapeUtils = [ImageGenShapeUtil, BatchGenShapeUtil];
@@ -56,6 +57,7 @@ export default function Canvas() {
         <TopBar />
         <Toolbar />
         <ZoomControl />
+        <ImageActionBar />
         <Panels />
       </Tldraw>
     </div>
