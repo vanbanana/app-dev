@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { InviteGate } from "@/components/InviteGate";
 
 const Canvas = dynamic(() => import("@/components/Canvas"), {
   ssr: false,
@@ -22,5 +23,10 @@ const Canvas = dynamic(() => import("@/components/Canvas"), {
 });
 
 export default function Home() {
-  return <Canvas />;
+  return (
+    <>
+      <Canvas />
+      <InviteGate />
+    </>
+  );
 }

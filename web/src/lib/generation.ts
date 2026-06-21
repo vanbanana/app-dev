@@ -3,6 +3,7 @@ import type { ImageGenShape } from "@/components/shapes/ImageGenShapeUtil";
 import { ratioToSize, totalHeight } from "@/components/shapes/ImageGenShapeUtil";
 import { detectSplits } from "./crop";
 import { getSettings } from "./settings";
+import { applyInvite, getCode, type Invite } from "./invite";
 
 // ---- concurrency limiter -------------------------------------------------
 let active = 0;
@@ -61,9 +62,11 @@ export async function runGeneration(editor: Editor, id: ImageGenShape["id"]): Pr
           prompt: s.props.prompt,
           size: ratioToSize(s.props.ratio),
           referenceImage: s.props.referenceImage || undefined,
+          code: getCode() ?? undefined,
         }),
       });
-      const data = (await res.json()) as { image?: string; error?: string };
+      const data = (await res.json()) as { image?: string; error?: string; invite?: Invite };
+      if (data.invite) applyInvite(data.invite);
       if (!res.ok || !data.image) throw new Error(data.error || `请求失败 (${res.status})`);
 
       const props: Partial<ImageGenShape["props"]> = {

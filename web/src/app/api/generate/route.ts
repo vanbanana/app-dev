@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildPrompt, type PromptStyle } from "@/lib/prompts";
+import { consumeQuota, refundQuota, findCode, publicView } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -13,6 +14,13 @@ type GenerateBody = {
   referenceImage?: string; // data URL (data:image/png;base64,....)
   size?: string;
   model?: string;
+  code?: string; // invite code
+};
+
+const QUOTA_ERRORS: Record<string, string> = {
+  not_found: "邀请码无效",
+  disabled: "该邀请码已被停用",
+  exhausted: "该邀请码的可用次数已用完",
 };
 
 function dataUrlToBuffer(dataUrl: string): { buffer: Buffer; mime: string } {
@@ -51,6 +59,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
+  const code = (body.code ?? "").trim();
+  if (!code) {
+    return NextResponse.json({ error: "缺少邀请码，请先填写邀请码" }, { status: 401 });
+  }
+
+  // Atomically reserve one unit of quota before spending an upstream call.
+  const reserve = consumeQuota(code);
+  if (!reserve.ok) {
+    return NextResponse.json({ error: QUOTA_ERRORS[reserve.reason] }, { status: 403 });
+  }
+
   const style: PromptStyle = body.style === "chibi" ? "chibi" : "realistic";
   const size = body.size?.trim() || "1536x1024";
   const model = body.model?.trim() || process.env.IMAGE_MODEL || DEFAULT_MODEL;
@@ -86,6 +105,7 @@ export async function POST(req: NextRequest) {
 
     const text = await upstream.text();
     if (!upstream.ok) {
+      refundQuota(code);
       return NextResponse.json(
         { error: `Upstream error (${upstream.status}): ${text.slice(0, 500)}` },
         { status: 502 },
@@ -95,6 +115,7 @@ export async function POST(req: NextRequest) {
     const json = JSON.parse(text) as { data?: Array<{ b64_json?: string; url?: string }> };
     const first = json.data?.[0];
     if (!first) {
+      refundQuota(code);
       return NextResponse.json(
         { error: `Unexpected upstream response: ${text.slice(0, 500)}` },
         { status: 502 },
@@ -102,8 +123,10 @@ export async function POST(req: NextRequest) {
     }
 
     const image = await toDataUrl(first);
-    return NextResponse.json({ image });
+    const row = findCode(code);
+    return NextResponse.json({ image, invite: row ? publicView(row) : null });
   } catch (err) {
+    refundQuota(code);
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
   }

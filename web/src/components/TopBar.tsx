@@ -3,10 +3,13 @@
 import { useState, type CSSProperties } from "react";
 import { ChevronDown, Zap, MessagesSquare, Box, History, Settings } from "lucide-react";
 import { setOpenPanel, useOpenPanel } from "@/lib/ui-store";
+import { useInvite } from "@/lib/invite";
 
 export function TopBar() {
   const [name, setName] = useState("Untitled");
   const open = useOpenPanel();
+  const { invite } = useInvite();
+  const remaining = invite ? invite.remaining : 0;
 
   return (
     <div style={S.wrap}>
@@ -41,9 +44,9 @@ export function TopBar() {
         >
           <Settings size={15} />
         </button>
-        <div style={S.credits}>
-          <Zap size={13} style={{ color: "#cfcfd3" }} fill="#cfcfd3" />
-          <span style={{ fontVariantNumeric: "tabular-nums" }}>30</span>
+        <div style={S.credits} title={invite ? `剩余 ${remaining} / 总额度 ${invite.quota} 次` : "剩余次数"}>
+          <Zap size={13} style={{ color: remaining > 0 ? "#cfcfd3" : "#ff8c8c" }} fill={remaining > 0 ? "#cfcfd3" : "#ff8c8c"} />
+          <span style={{ fontVariantNumeric: "tabular-nums" }}>{remaining}</span>
         </div>
         <div style={S.avatar}>A</div>
         <button style={S.chat} onPointerDown={(e) => e.stopPropagation()}>
