@@ -140,6 +140,18 @@ export class ImageGenShapeUtil extends BaseBoxShapeUtil<ImageGenShape> {
     return true;
   }
 
+  // The default selection box is drawn from the shape's full bounds (which
+  // include the title row); that line crosses over the name/dimensions while
+  // dragging. We hide it and rely solely on the custom indicator() below,
+  // which wraps only the image region.
+  override hideSelectionBoundsBg() {
+    return true;
+  }
+
+  override hideSelectionBoundsFg() {
+    return true;
+  }
+
   override onResize(shape: ImageGenShape) {
     return shape;
   }
