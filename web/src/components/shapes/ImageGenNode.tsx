@@ -15,29 +15,28 @@ import {
   FolderArchive,
   Share2,
   Clock,
+  Layers,
+  Check,
 } from "lucide-react";
 import {
   frameHeight,
   ratioToSize,
   totalHeight,
   type ImageGenShape,
-  type ImageGenStyle,
 } from "./ImageGenShapeUtil";
 import { cropViews, VIEW_LABELS_CN } from "@/lib/crop";
+import { SKILLS, getSkill, isThreeView, type SkillId } from "@/lib/skills";
 import {
   downloadSingleView,
   downloadAllViews,
   downloadViewsZip,
+  downloadDataUrl,
   shareImage,
 } from "@/lib/download";
 import { runGeneration } from "@/lib/generation";
 import { CropOverlay } from "../CropOverlay";
 
 const RATIOS = ["3:2", "2:3", "1:1", "16:9"];
-const STYLE_OPTIONS: { value: ImageGenStyle; label: string }[] = [
-  { value: "realistic", label: "写实" },
-  { value: "chibi", label: "Q版" },
-];
 
 // Stop tldraw from hijacking pointer + keyboard events on interactive controls.
 const interactive = {
@@ -59,17 +58,18 @@ export function ImageGenNode({ shape, editor }: { shape: ImageGenShape; editor: 
   const [showCrop, setShowCrop] = useState(false);
   const p = shape.props;
   const presentation = p.presentation === true;
+  const threeView = isThreeView(p.skill);
   const fH = frameHeight(p.w, p.ratio);
 
   // Keep the shape's box height in sync with its borderless layout (also
   // self-heals nodes persisted under an older height formula).
   useEffect(() => {
-    const want = totalHeight(p.w, p.ratio, p.status === "done", presentation);
+    const want = totalHeight(p.w, p.ratio, p.status === "done" && threeView, presentation);
     if (Math.abs(want - p.h) > 1) {
       editor.updateShape<ImageGenShape>({ id: shape.id, type: "image-gen", props: { h: want } });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [p.w, p.ratio, p.status, presentation]);
+  }, [p.w, p.ratio, p.status, presentation, threeView]);
 
   // Recompute the three cropped thumbnails whenever the source/splits change.
   useEffect(() => {
@@ -95,7 +95,11 @@ export function ImageGenNode({ shape, editor }: { shape: ImageGenShape; editor: 
   }
 
   function setRatio(ratio: string) {
-    patch({ ratio, h: totalHeight(p.w, ratio, p.status === "done", presentation) });
+    patch({ ratio, h: totalHeight(p.w, ratio, p.status === "done" && threeView, presentation) });
+  }
+
+  function setSkill(skill: SkillId) {
+    patch({ skill });
   }
 
   function applyManualSplits(splits: number[]) {
@@ -138,7 +142,7 @@ export function ImageGenNode({ shape, editor }: { shape: ImageGenShape; editor: 
         ) : p.status === "generating" ? (
           <div style={S.center}>
             <Loader2 size={26} style={{ color: "var(--text-dim)", animation: "spin 1s linear infinite" }} />
-            <span style={S.hint}>正在生成三视图…</span>
+            <span style={S.hint}>{threeView ? "正在生成三视图…" : "正在生成…"}</span>
           </div>
         ) : p.status === "queued" ? (
           <div style={S.center}>
@@ -155,10 +159,20 @@ export function ImageGenNode({ shape, editor }: { shape: ImageGenShape; editor: 
             <ImagePlus size={26} style={{ color: "var(--text-faint)" }} />
           </div>
         )}
+        {p.status === "done" && !threeView && p.imageUrl && (
+          <div style={S.imgActions} {...interactive}>
+            <ActionIcon title="下载" onClick={() => downloadDataUrl(p.imageUrl, `${baseName(shape)}.png`)}>
+              <Download size={14} />
+            </ActionIcon>
+            <ActionIcon title="分享" onClick={() => void shareImage(p.imageUrl, baseName(shape))}>
+              <Share2 size={14} />
+            </ActionIcon>
+          </div>
+        )}
       </div>
 
-      {/* Cropped views strip */}
-      {p.status === "done" && (
+      {/* Cropped views strip (three-view skills only) */}
+      {p.status === "done" && threeView && (
         <div style={S.cropsWrap} {...interactive}>
           <div style={S.cropsHeader}>
             <span style={S.cropsTitle}>三视图</span>
@@ -242,11 +256,7 @@ export function ImageGenNode({ shape, editor }: { shape: ImageGenShape; editor: 
 
         <div style={S.controls}>
           <div style={S.segs}>
-            <Segmented
-              options={STYLE_OPTIONS.map((s) => ({ value: s.value, label: s.label }))}
-              value={p.style}
-              onChange={(v) => patch({ style: v as ImageGenStyle })}
-            />
+            <SkillPicker value={p.skill ?? "general"} onChange={setSkill} />
             <Dropdown value={p.ratio} options={RATIOS} onChange={setRatio} />
           </div>
 
@@ -280,27 +290,53 @@ function ActionIcon({ children, onClick, title }: { children: ReactNode; onClick
   );
 }
 
-function Segmented({
-  options,
+function SkillPicker({
   value,
   onChange,
 }: {
-  options: { value: string; label: string }[];
-  value: string;
-  onChange: (v: string) => void;
+  value: SkillId;
+  onChange: (v: SkillId) => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const current = getSkill(value);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, [open]);
+
   return (
-    <div style={S.segmented} {...interactive}>
-      {options.map((o) => (
-        <button
-          key={o.value}
-          {...interactive}
-          onClick={() => onChange(o.value)}
-          style={{ ...S.seg, ...(value === o.value ? S.segActive : null) }}
-        >
-          {o.label}
-        </button>
-      ))}
+    <div ref={wrapRef} style={S.skillWrap} {...interactive}>
+      <button {...interactive} style={S.skillBtn} onClick={() => setOpen(!open)} title="选择 Skill">
+        <Layers size={13} style={{ color: "var(--text-dim)" }} />
+        {current.label}
+      </button>
+      {open && (
+        <div style={S.skillMenu} {...interactive}>
+          {SKILLS.map((s) => (
+            <button
+              key={s.id}
+              {...interactive}
+              style={{ ...S.skillItem, ...(s.id === value ? S.skillItemActive : null) }}
+              onClick={() => {
+                onChange(s.id);
+                setOpen(false);
+              }}
+            >
+              <span style={S.skillItemMain}>
+                <span style={S.skillItemLabel}>{s.label}</span>
+                <span style={S.skillItemDesc}>{s.desc}</span>
+              </span>
+              {s.id === value && <Check size={14} style={{ color: "var(--text)" }} />}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -375,13 +411,14 @@ const S: Record<string, CSSProperties> = {
     marginTop: 10,
     width: "100%",
     borderRadius: 12,
-    background: "var(--bg-elevated)",
-    border: "1px solid var(--border)",
+    background: "transparent",
     overflow: "hidden",
+    position: "relative",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
   },
+  imgActions: { position: "absolute", top: 8, right: 8, display: "flex", gap: 6, zIndex: 2 },
   image: { width: "100%", height: "100%", objectFit: "contain", background: "#fff" },
   center: { display: "flex", flexDirection: "column", alignItems: "center", gap: 10 },
   hint: { fontSize: 12, color: "var(--text-dim)" },
@@ -472,23 +509,52 @@ const S: Record<string, CSSProperties> = {
   },
   controls: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 },
   segs: { display: "flex", alignItems: "center", gap: 8 },
-  segmented: {
+  skillWrap: { position: "relative", display: "inline-flex" },
+  skillBtn: {
     display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
     background: "var(--bg-elevated)",
-    borderRadius: 9,
-    padding: 2,
     border: "1px solid var(--border)",
+    borderRadius: 9,
+    padding: "5px 10px",
+    fontSize: 12,
+    color: "var(--text)",
+    cursor: "pointer",
+    whiteSpace: "nowrap",
   },
-  seg: {
+  skillMenu: {
+    position: "absolute",
+    bottom: "calc(100% + 8px)",
+    left: 0,
+    minWidth: 196,
+    background: "var(--bg-panel)",
+    border: "1px solid var(--border)",
+    borderRadius: 12,
+    padding: 6,
+    boxShadow: "var(--shadow-panel)",
+    display: "flex",
+    flexDirection: "column",
+    gap: 2,
+    zIndex: 30,
+  },
+  skillItem: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    width: "100%",
     border: "none",
     background: "transparent",
-    color: "var(--text-dim)",
-    fontSize: 12,
-    padding: "4px 10px",
-    borderRadius: 7,
+    borderRadius: 8,
+    padding: "7px 9px",
     cursor: "pointer",
+    textAlign: "left",
   },
-  segActive: { background: "var(--bg-hover)", color: "var(--text)" },
+  skillItemActive: { background: "var(--bg-elevated)" },
+  skillItemMain: { display: "flex", flexDirection: "column", gap: 1 },
+  skillItemLabel: { fontSize: 12.5, color: "var(--text)" },
+  skillItemDesc: { fontSize: 10.5, color: "var(--text-faint)" },
   selectWrap: {
     display: "inline-flex",
     alignItems: "center",

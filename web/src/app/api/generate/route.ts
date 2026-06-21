@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildPrompt, type PromptStyle } from "@/lib/prompts";
+import { getSkill, type SkillId } from "@/lib/skills";
 import { consumeQuota, refundQuota, findCode, publicView, getGenConfig } from "@/lib/db";
 
 export const runtime = "nodejs";
@@ -7,6 +8,7 @@ export const maxDuration = 120;
 
 type GenerateBody = {
   style?: PromptStyle;
+  skill?: SkillId;
   prompt?: string;
   referenceImage?: string; // data URL (data:image/png;base64,....)
   size?: string;
@@ -83,16 +85,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "缺少邀请码，请先填写邀请码" }, { status: 401 });
   }
 
+  // Resolve the chosen skill and the final upstream prompt. General生图 sends the
+  // user prompt as-is; three-view skills wrap it into the ortho reference sheet.
+  const skill = getSkill(body.skill);
+  const userPrompt = (body.prompt ?? "").trim();
+  let prompt: string;
+  if (skill.threeView) {
+    prompt = buildPrompt(skill.promptStyle ?? "realistic", userPrompt);
+  } else {
+    if (!userPrompt && !body.referenceImage) {
+      return NextResponse.json({ error: "请输入提示词" }, { status: 400 });
+    }
+    prompt = userPrompt;
+  }
+
   // Atomically reserve one unit of quota before spending an upstream call.
   const reserve = consumeQuota(code);
   if (!reserve.ok) {
     return NextResponse.json({ error: QUOTA_ERRORS[reserve.reason] }, { status: 403 });
   }
 
-  const style: PromptStyle = body.style === "chibi" ? "chibi" : "realistic";
   const size = body.size?.trim() || "1536x1024";
   const model = body.model?.trim() || configuredModel;
-  const prompt = buildPrompt(style, body.prompt);
 
   try {
     let upstream: Response;

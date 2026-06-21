@@ -3,18 +3,23 @@ import type { ImageGenShape } from "@/components/shapes/ImageGenShapeUtil";
 import { ratioToSize, totalHeight } from "@/components/shapes/ImageGenShapeUtil";
 import { detectSplits } from "./crop";
 import { getSettings } from "./settings";
+import { isThreeView } from "./skills";
 import { applyInvite, getCode, type Invite } from "./invite";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+type GenData = { image?: string; error?: string; invite?: Invite };
+type GenResult = { ok: boolean; status: number; data: GenData };
+
 /**
- * POST to /api/generate with retries. The reference-image path goes through
- * the upstream `/v1/images/edits` endpoint, which is heavier and slower than
- * text-only generation; over a tunnel the connection can drop mid-request and
- * surface as a client-side "Failed to fetch". We retry on thrown network
- * errors and on transient gateway statuses (502/503/504) with backoff.
+ * POST to /api/generate with retries. Image generation goes through heavier
+ * upstream endpoints (`/v1/images/edits` for references) and can take a long
+ * time; over a tunnel the connection may drop or the proxy may return an HTML
+ * gateway/timeout page (502/503/504 or Cloudflare 520-524). Those would break
+ * `res.json()` with "Unexpected token '<'". We retry on thrown network errors,
+ * on any 5xx status, and on non-JSON bodies, then parse safely.
  */
-async function postGenerate(body: string, retries = 2): Promise<Response> {
+async function postGenerate(body: string, retries = 2): Promise<GenResult> {
   let lastErr: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
@@ -23,11 +28,21 @@ async function postGenerate(body: string, retries = 2): Promise<Response> {
         headers: { "Content-Type": "application/json" },
         body,
       });
-      if ((res.status === 502 || res.status === 503 || res.status === 504) && attempt < retries) {
+      const text = await res.text();
+      const looksJson =
+        (res.headers.get("content-type") || "").includes("application/json") ||
+        text.trimStart().startsWith("{");
+      if ((res.status >= 500 || !looksJson) && attempt < retries) {
         await sleep(900 * (attempt + 1));
         continue;
       }
-      return res;
+      let data: GenData = {};
+      try {
+        data = text ? (JSON.parse(text) as GenData) : {};
+      } catch {
+        throw new Error("生成服务暂时不可用，请稍后重试");
+      }
+      return { ok: res.ok, status: res.status, data };
     } catch (err) {
       lastErr = err;
       if (attempt >= retries) break;
@@ -89,9 +104,11 @@ export async function runGeneration(editor: Editor, id: ImageGenShape["id"]): Pr
     const s = editor.getShape<ImageGenShape>(id);
     if (!s) return;
     editor.updateShape<ImageGenShape>({ id, type: "image-gen", props: { status: "generating", error: "" } });
+    const threeView = isThreeView(s.props.skill);
     try {
-      const res = await postGenerate(
+      const { ok, status, data } = await postGenerate(
         JSON.stringify({
+          skill: s.props.skill ?? "general",
           style: s.props.style,
           prompt: s.props.prompt,
           size: ratioToSize(s.props.ratio),
@@ -99,17 +116,17 @@ export async function runGeneration(editor: Editor, id: ImageGenShape["id"]): Pr
           code: getCode() ?? undefined,
         }),
       );
-      const data = (await res.json()) as { image?: string; error?: string; invite?: Invite };
       if (data.invite) applyInvite(data.invite);
-      if (!res.ok || !data.image) throw new Error(data.error || `请求失败 (${res.status})`);
+      if (!ok || !data.image) throw new Error(data.error || `请求失败 (${status})`);
 
       const props: Partial<ImageGenShape["props"]> = {
         status: "done",
         imageUrl: data.image,
         splits: [],
-        h: totalHeight(s.props.w, s.props.ratio, true, s.props.presentation),
+        h: totalHeight(s.props.w, s.props.ratio, threeView, s.props.presentation),
       };
-      if (getSettings().autoCrop) {
+      // Only three-view skills get split into Front/Side/Top crops.
+      if (threeView && getSettings().autoCrop) {
         try {
           props.splits = await detectSplits(data.image);
         } catch {

@@ -9,6 +9,7 @@ import {
   type TLBaseShape,
 } from "tldraw";
 import { ImageGenNode } from "./ImageGenNode";
+import type { SkillId } from "@/lib/skills";
 
 export type ImageGenStyle = "realistic" | "chibi";
 export type ImageGenStatus = "idle" | "queued" | "generating" | "done" | "error";
@@ -30,6 +31,8 @@ export type ImageGenShape = TLBaseShape<
     createdAt: number;
     /** borderless "presentation" result node (batch output): no prompt panel */
     presentation?: boolean;
+    /** modular generation skill: general image, or three-view (realistic/chibi) */
+    skill?: SkillId;
   }
 >;
 
@@ -102,6 +105,7 @@ export class ImageGenShapeUtil extends BaseBoxShapeUtil<ImageGenShape> {
     splits: T.arrayOf(T.number),
     createdAt: T.number,
     presentation: T.boolean.optional(),
+    skill: T.literalEnum("general", "realistic", "chibi").optional(),
   };
 
   override getDefaultProps(): ImageGenShape["props"] {
@@ -118,6 +122,7 @@ export class ImageGenShapeUtil extends BaseBoxShapeUtil<ImageGenShape> {
       splits: [],
       createdAt: Date.now(),
       presentation: false,
+      skill: "general",
     };
   }
 

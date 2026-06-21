@@ -76,7 +76,7 @@ export function BatchGenNode({ shape, editor }: { shape: BatchGenShape; editor: 
         type: "image-gen",
         x: startX + col * gapX,
         y: startY + row * gapY,
-        props: { w: NODE_W, h: childH, style, ratio, referenceImage: img, presentation: true, createdAt: Date.now() },
+        props: { w: NODE_W, h: childH, style, skill: style, ratio, referenceImage: img, presentation: true, createdAt: Date.now() },
       });
       return id;
     });
