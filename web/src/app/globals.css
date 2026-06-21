@@ -110,7 +110,7 @@ body {
   color: inherit;
 }
 
-/* ---- invite gate (closed-beta auth) ------------------------------------- */
+/* ---- invite gate (closed-beta, image-driven) --------------------------- */
 .gate {
   position: fixed;
   inset: 0;
@@ -127,14 +127,14 @@ body {
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(120% 100% at 50% -20%, rgba(255, 255, 255, 0.05) 0%, rgba(10, 10, 11, 0) 55%),
-    radial-gradient(160% 120% at 50% 120%, rgba(0, 0, 0, 0.65) 0%, rgba(10, 10, 11, 0) 60%);
+    radial-gradient(120% 90% at 18% -10%, rgba(255, 255, 255, 0.055) 0%, rgba(10, 10, 11, 0) 50%),
+    radial-gradient(150% 120% at 80% 120%, rgba(0, 0, 0, 0.6) 0%, rgba(10, 10, 11, 0) 60%);
 }
 .gate__bg::after {
   content: "";
   position: absolute;
   inset: 0;
-  opacity: 0.035;
+  opacity: 0.04;
   background-image: url("/noise.svg");
   background-size: 180px 180px;
   mix-blend-mode: screen;
@@ -143,29 +143,31 @@ body {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 940px;
+  max-width: 1000px;
+  min-height: 588px;
   display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
+  grid-template-columns: 1fr 1fr;
   background: var(--bg-panel);
   border: 1px solid var(--border);
-  border-radius: 22px;
+  border-radius: 24px;
   box-shadow: var(--shadow-panel);
   overflow: hidden;
 }
+
+/* left: brand + minimal entry */
 .gate__brand {
-  padding: 44px 42px;
-  border-right: 1px solid var(--border);
+  padding: 52px 50px;
   display: flex;
   flex-direction: column;
 }
 .gate__brandTop {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 11px;
 }
 .gate__mark {
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border-radius: 11px;
   background: var(--bg-hover);
   border: 1px solid var(--border-strong);
@@ -174,99 +176,43 @@ body {
   justify-content: center;
 }
 .gate__word {
-  font-size: 19px;
+  font-size: 18px;
   font-weight: 650;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.4px;
   color: var(--text);
 }
 .gate__beta {
-  margin-left: 4px;
-  font-size: 10.5px;
-  letter-spacing: 1.4px;
+  margin-left: 2px;
+  font-size: 10px;
+  letter-spacing: 1.6px;
   font-weight: 600;
   color: var(--text-dim);
   border: 1px solid var(--border-strong);
   border-radius: 20px;
   padding: 3px 9px;
 }
-.gate__headline {
-  margin: 40px 0 0;
-  font-size: 27px;
-  line-height: 1.32;
-  font-weight: 600;
-  color: var(--text);
-  letter-spacing: 0.2px;
-}
-.gate__sub {
-  margin: 16px 0 0;
-  font-size: 13.5px;
-  line-height: 1.7;
-  color: var(--text-dim);
-  max-width: 360px;
-}
-.gate__features {
-  margin: 30px 0 0;
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-.gate__feat {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--text-dim);
-  font-size: 13px;
-}
-.gate__featIcon {
-  width: 30px;
-  height: 30px;
-  flex-shrink: 0;
-  border-radius: 9px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text);
-}
-.gate__brandFoot {
+.gate__hero {
   margin-top: auto;
-  padding-top: 34px;
-  font-size: 11.5px;
-  color: var(--text-faint);
 }
-.gate__auth {
-  padding: 44px 42px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-.gate__authTitle {
-  font-size: 17px;
-  font-weight: 600;
-  color: var(--text);
+.gate__headline {
   margin: 0;
+  font-size: 34px;
+  line-height: 1.28;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: var(--text);
 }
-.gate__authSub {
-  font-size: 13px;
-  color: var(--text-dim);
-  margin: 8px 0 26px;
-  line-height: 1.6;
-}
-.gate__label {
-  font-size: 11.5px;
-  letter-spacing: 0.5px;
+.gate__headline span {
   color: var(--text-faint);
-  margin-bottom: 9px;
-  display: block;
 }
 .gate__inputRow {
+  margin-top: 32px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  height: 50px;
-  padding: 0 15px;
-  border-radius: 12px;
+  gap: 8px;
+  height: 56px;
+  padding: 0 8px 0 18px;
+  border-radius: 14px;
   border: 1px solid var(--border-strong);
   background: var(--bg-elevated);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -289,81 +235,119 @@ body {
   letter-spacing: 0.5px;
   color: var(--text-faint);
 }
-.gate__error {
-  margin-top: 10px;
-  font-size: 12.5px;
-  color: #ff8c8c;
-  min-height: 16px;
-}
-.gate__btn {
-  margin-top: 18px;
-  width: 100%;
-  height: 48px;
-  border-radius: 12px;
+.gate__submit {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
   border: none;
+  border-radius: 11px;
   background: var(--btn-primary);
   color: var(--btn-primary-text);
-  font-size: 14.5px;
-  font-weight: 600;
-  cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  cursor: pointer;
   box-shadow: var(--shadow-btn);
-  transition: transform 0.12s ease, opacity 0.12s ease, filter 0.12s ease;
+  transition: filter 0.12s ease, opacity 0.12s ease;
 }
-.gate__btn:hover:not(:disabled) {
-  filter: brightness(1.04);
-  transform: translateY(-1px);
+.gate__submit:hover:not(:disabled) {
+  filter: brightness(1.05);
 }
-.gate__btn:active:not(:disabled) {
-  transform: translateY(0);
-}
-.gate__btn:disabled {
-  opacity: 0.55;
+.gate__submit:disabled {
+  opacity: 0.4;
   cursor: default;
 }
-.gate__hint {
-  margin-top: 22px;
-  padding-top: 20px;
-  border-top: 1px solid var(--border);
+.gate__error {
+  margin-top: 12px;
+  font-size: 12.5px;
+  color: #ff8c8c;
+  min-height: 15px;
+}
+.gate__foot {
+  margin-top: 6px;
   font-size: 12px;
   color: var(--text-faint);
-  line-height: 1.6;
-}
-.gate__hint b {
-  color: var(--text-dim);
-  font-weight: 600;
+  letter-spacing: 0.3px;
 }
 .gate__loading {
+  margin-top: 32px;
   display: flex;
   align-items: center;
   gap: 9px;
   color: var(--text-dim);
   font-size: 13px;
-  height: 50px;
+  height: 56px;
 }
-@media (max-width: 760px) {
+
+/* right: scrolling product showcase */
+.gate__show {
+  position: relative;
+  overflow: hidden;
+  border-left: 1px solid var(--border);
+  background: var(--bg-elevated);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 14%, #000 86%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 14%, #000 86%, transparent 100%);
+}
+.gate__track {
+  position: absolute;
+  inset: -6% -6%;
+  display: flex;
+  gap: 16px;
+  transform: rotate(-7deg) scale(1.16);
+  transform-origin: center;
+}
+.gate__col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: gateScrollUp 42s linear infinite;
+}
+.gate__col--b {
+  animation: gateScrollDown 50s linear infinite;
+}
+@keyframes gateScrollUp {
+  from { transform: translateY(0); }
+  to { transform: translateY(-50%); }
+}
+@keyframes gateScrollDown {
+  from { transform: translateY(-50%); }
+  to { transform: translateY(0); }
+}
+.gate__shot {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  background: #f4f4f5;
+  box-shadow: var(--shadow-panel);
+}
+.gate__shot img {
+  width: 100%;
+  display: block;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gate__col,
+  .gate__col--b {
+    animation: none;
+  }
+}
+@media (max-width: 860px) {
   .gate__frame {
     grid-template-columns: 1fr;
-    max-width: 460px;
+    max-width: 440px;
+    min-height: 0;
   }
-  .gate__brand {
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-    padding: 34px 30px;
-  }
-  .gate__features,
-  .gate__brandFoot {
+  .gate__show {
     display: none;
   }
-  .gate__headline {
-    margin-top: 26px;
-    font-size: 22px;
+  .gate__brand {
+    padding: 40px 32px 44px;
   }
-  .gate__auth {
-    padding: 32px 30px 36px;
+  .gate__hero {
+    margin-top: 36px;
+  }
+  .gate__headline {
+    font-size: 27px;
   }
 }
 
