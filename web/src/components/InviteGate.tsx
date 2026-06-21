@@ -7,6 +7,7 @@ import { initInvite, redeem, useInvite } from "@/lib/invite";
 
 const SHOTS_A = ["/showcase/1.png", "/showcase/4.png"];
 const SHOTS_B = ["/showcase/2.png", "/showcase/1.png"];
+const SHOTS_C = ["/showcase/4.png", "/showcase/2.png"];
 
 export function InviteGate() {
   const { invite, ready } = useInvite();
@@ -104,6 +105,13 @@ export function InviteGate() {
             <div className="gate__col gate__col--b">
               {[...SHOTS_B, ...SHOTS_B].map((src, i) => (
                 <div className="gate__shot" key={`b${i}`}>
+                  <img src={src} alt="" draggable={false} />
+                </div>
+              ))}
+            </div>
+            <div className="gate__col gate__col--c">
+              {[...SHOTS_C, ...SHOTS_C].map((src, i) => (
+                <div className="gate__shot" key={`c${i}`}>
                   <img src={src} alt="" draggable={false} />
                 </div>
               ))}

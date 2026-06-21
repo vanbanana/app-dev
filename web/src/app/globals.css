@@ -6,8 +6,8 @@
   --bg-elevated: #141416;
   --bg-panel: #161618;
   --bg-hover: #262629;
-  --border: #29292c;
-  --border-strong: #3a3a3e;
+  --border: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.13);
   --text: #f3f3f4;
   --text-dim: #9c9ca1;
   --text-faint: #67676c;
@@ -68,8 +68,7 @@ body {
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(120% 120% at 50% -10%, rgba(255, 255, 255, 0.045) 0%, rgba(10, 10, 11, 0) 50%),
-    radial-gradient(160% 120% at 50% 120%, rgba(0, 0, 0, 0.6) 0%, rgba(10, 10, 11, 0) 60%),
+    radial-gradient(80% 80% at 50% 30%, rgba(255, 255, 255, 0.018) 0%, rgba(10, 10, 11, 0) 70%),
     var(--bg);
 }
 .canvas-texture::after {
@@ -77,9 +76,9 @@ body {
   content: "";
   position: absolute;
   inset: 0;
-  opacity: 0.04;
+  opacity: 0.03;
   background-image: url("/noise.svg");
-  background-size: 180px 180px;
+  background-size: 200px 200px;
   mix-blend-mode: screen;
 }
 
@@ -94,6 +93,12 @@ body {
   --color-selection-stroke: #cfcfd3 !important;
   --color-selection-fill: rgba(207, 207, 211, 0.1) !important;
   --color-focus: #cfcfd3 !important;
+}
+
+/* round the selection bounding box to match our rounded cards */
+.tl-selection__fg__outline {
+  rx: 18px;
+  ry: 18px;
 }
 
 @keyframes spin {
@@ -115,10 +120,6 @@ body {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
   background: var(--bg);
   overflow: auto;
 }
@@ -127,8 +128,7 @@ body {
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(120% 90% at 18% -10%, rgba(255, 255, 255, 0.055) 0%, rgba(10, 10, 11, 0) 50%),
-    radial-gradient(150% 120% at 80% 120%, rgba(0, 0, 0, 0.6) 0%, rgba(10, 10, 11, 0) 60%);
+    radial-gradient(70% 80% at 20% 22%, rgba(255, 255, 255, 0.02) 0%, rgba(10, 10, 11, 0) 60%);
 }
 .gate__bg::after {
   content: "";
@@ -143,20 +143,16 @@ body {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 1000px;
-  min-height: 588px;
+  height: 100%;
+  min-height: 100vh;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: 24px;
-  box-shadow: var(--shadow-panel);
+  grid-template-columns: minmax(440px, 1fr) 1.15fr;
   overflow: hidden;
 }
 
 /* left: brand + minimal entry */
 .gate__brand {
-  padding: 52px 50px;
+  padding: 56px 64px;
   display: flex;
   flex-direction: column;
 }
@@ -193,6 +189,9 @@ body {
 }
 .gate__hero {
   margin-top: auto;
+  margin-bottom: auto;
+  width: 100%;
+  max-width: 420px;
 }
 .gate__headline {
   margin: 0;
@@ -283,10 +282,18 @@ body {
 .gate__show {
   position: relative;
   overflow: hidden;
-  border-left: 1px solid var(--border);
-  background: var(--bg-elevated);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 14%, #000 86%, transparent 100%);
-  mask-image: linear-gradient(to bottom, transparent 0%, #000 14%, #000 86%, transparent 100%);
+  background: var(--bg);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 12%, #000 88%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 12%, #000 88%, transparent 100%);
+}
+.gate__show::before {
+  /* soft seam so the wall fades into the brand column instead of a hard edge */
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(to right, var(--bg) 0%, rgba(10, 10, 11, 0) 16%);
 }
 .gate__track {
   position: absolute;
@@ -306,6 +313,9 @@ body {
 .gate__col--b {
   animation: gateScrollDown 50s linear infinite;
 }
+.gate__col--c {
+  animation: gateScrollUp 58s linear infinite;
+}
 @keyframes gateScrollUp {
   from { transform: translateY(0); }
   to { transform: translateY(-50%); }
@@ -317,9 +327,9 @@ body {
 .gate__shot {
   border-radius: 14px;
   overflow: hidden;
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border);
   background: #f4f4f5;
-  box-shadow: var(--shadow-panel);
+  box-shadow: var(--shadow-soft);
 }
 .gate__shot img {
   width: 100%;
@@ -327,27 +337,26 @@ body {
 }
 @media (prefers-reduced-motion: reduce) {
   .gate__col,
-  .gate__col--b {
+  .gate__col--b,
+  .gate__col--c {
     animation: none;
   }
 }
 @media (max-width: 860px) {
   .gate__frame {
     grid-template-columns: 1fr;
-    max-width: 440px;
-    min-height: 0;
   }
   .gate__show {
     display: none;
   }
   .gate__brand {
-    padding: 40px 32px 44px;
+    padding: 40px 30px 48px;
   }
   .gate__hero {
-    margin-top: 36px;
+    max-width: none;
   }
   .gate__headline {
-    font-size: 27px;
+    font-size: 28px;
   }
 }
 
