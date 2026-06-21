@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Atelier · 无限 AI 画布",
-  description: "暗色无限画布上的 AI 图像生成工作台",
+  title: "Canvora · AI 设计画布",
+  description: "暗色无限画布上的 AI 设计创作工作台",
 };
 
 export default function RootLayout({

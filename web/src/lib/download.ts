@@ -63,7 +63,7 @@ export async function downloadBatchZip(
 ): Promise<void> {
   const zip = new JSZip();
   const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-  const root = zip.folder(`atelier_batch_${date}`) ?? zip;
+  const root = zip.folder(`canvora_batch_${date}`) ?? zip;
   for (let t = 0; t < tasks.length; t++) {
     const task = tasks[t];
     const crops = await cropViews(task.imageUrl, task.splits);
@@ -74,7 +74,7 @@ export async function downloadBatchZip(
     });
   }
   const blob = await zip.generateAsync({ type: "blob" });
-  triggerDownload(blob, `atelier_batch_${date}_${tasks.length}tasks.zip`);
+  triggerDownload(blob, `canvora_batch_${date}_${tasks.length}tasks.zip`);
 }
 
 export function canShareFiles(): boolean {

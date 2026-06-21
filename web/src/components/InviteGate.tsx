@@ -1,8 +1,23 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
-import { Box, Loader2, KeyRound, ArrowRight } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  Box,
+  Loader2,
+  ArrowRight,
+  Infinity as InfinityIcon,
+  Scissors,
+  Layers,
+  Download,
+} from "lucide-react";
 import { initInvite, redeem, useInvite } from "@/lib/invite";
+
+const FEATURES = [
+  { icon: InfinityIcon, text: "无限画布 · 多图同屏依旧顺滑" },
+  { icon: Layers, text: "一句话生成正 / 侧 / 顶 三视图" },
+  { icon: Scissors, text: "自动裁切 + 手动微调分割线" },
+  { icon: Download, text: "批量生成 · 一键打包导出" },
+];
 
 export function InviteGate() {
   const { invite, ready } = useInvite();
@@ -27,121 +42,92 @@ export function InviteGate() {
   }
 
   return (
-    <div style={S.overlay}>
-      <div style={S.card}>
-        <div style={S.logo}>
-          <Box size={22} style={{ color: "var(--text)" }} />
-        </div>
-        <h1 style={S.title}>Atelier · 三视图工作台</h1>
-        <p style={S.subtitle}>输入邀请码即可开始使用，每个邀请码有固定的可用次数。</p>
-
-        {ready ? (
-          <>
-            <div style={S.inputRow}>
-              <KeyRound size={16} style={{ color: "var(--text-faint)", flexShrink: 0 }} />
-              <input
-                autoFocus
-                value={code}
-                onChange={(e) => {
-                  setCode(e.target.value.toUpperCase());
-                  setError("");
-                }}
-                onKeyDown={(e) => e.key === "Enter" && void submit()}
-                placeholder="请输入邀请码"
-                style={S.input}
-                spellCheck={false}
-              />
-            </div>
-            {error && <div style={S.error}>{error}</div>}
-            <button style={{ ...S.button, opacity: busy || !code.trim() ? 0.6 : 1 }} onClick={() => void submit()} disabled={busy || !code.trim()}>
-              {busy ? <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> : <>进入 <ArrowRight size={15} /></>}
-            </button>
-          </>
-        ) : (
-          <div style={S.loading}>
-            <Loader2 size={18} style={{ animation: "spin 1s linear infinite" }} />
-            <span>正在校验…</span>
+    <div className="gate">
+      <div className="gate__bg" />
+      <div className="gate__frame">
+        <section className="gate__brand">
+          <div className="gate__brandTop">
+            <span className="gate__mark">
+              <Box size={20} style={{ color: "var(--text)" }} />
+            </span>
+            <span className="gate__word">Canvora</span>
+            <span className="gate__beta">CLOSED BETA</span>
           </div>
-        )}
+
+          <h1 className="gate__headline">
+            把一句话，
+            <br />
+            变成可直接用的设计稿
+          </h1>
+          <p className="gate__sub">
+            Canvora 是一块面向设计的无限 AI 画布。输入描述或参考图，即可生成可商用的多视图设计参考，并自动裁切、批量导出。
+          </p>
+
+          <div className="gate__features">
+            {FEATURES.map((f) => (
+              <div className="gate__feat" key={f.text}>
+                <span className="gate__featIcon">
+                  <f.icon size={15} />
+                </span>
+                {f.text}
+              </div>
+            ))}
+          </div>
+
+          <div className="gate__brandFoot">© {new Date().getFullYear()} Canvora · 内测版本，功能持续完善中</div>
+        </section>
+
+        <section className="gate__auth">
+          <h2 className="gate__authTitle">内测访问</h2>
+          <p className="gate__authSub">Canvora 当前处于邀请制内测阶段，请输入邀请码进入。</p>
+
+          {ready ? (
+            <>
+              <label className="gate__label" htmlFor="gate-code">
+                邀请码
+              </label>
+              <div className="gate__inputRow">
+                <input
+                  id="gate-code"
+                  autoFocus
+                  value={code}
+                  onChange={(e) => {
+                    setCode(e.target.value.toUpperCase());
+                    setError("");
+                  }}
+                  onKeyDown={(e) => e.key === "Enter" && void submit()}
+                  placeholder="请输入邀请码"
+                  className="gate__input"
+                  spellCheck={false}
+                  autoComplete="off"
+                />
+              </div>
+              <div className="gate__error">{error}</div>
+              <button
+                className="gate__btn"
+                onClick={() => void submit()}
+                disabled={busy || !code.trim()}
+              >
+                {busy ? (
+                  <Loader2 size={17} style={{ animation: "spin 1s linear infinite" }} />
+                ) : (
+                  <>
+                    进入工作台 <ArrowRight size={16} />
+                  </>
+                )}
+              </button>
+              <div className="gate__hint">
+                还没有邀请码？内测名额有限，可联系管理员申请，或留意后续开放注册。
+              </div>
+            </>
+          ) : (
+            <div className="gate__loading">
+              <Loader2 size={18} style={{ animation: "spin 1s linear infinite" }} />
+              正在校验访问凭证…
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );
 }
-
-const S: Record<string, CSSProperties> = {
-  overlay: {
-    position: "fixed",
-    inset: 0,
-    zIndex: 1000,
-    background: "var(--bg)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  card: {
-    width: 380,
-    maxWidth: "calc(100vw - 40px)",
-    background: "var(--bg-panel)",
-    border: "1px solid var(--border)",
-    borderRadius: 18,
-    boxShadow: "var(--shadow-panel)",
-    padding: "32px 28px",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    textAlign: "center",
-  },
-  logo: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    background: "var(--bg-hover)",
-    border: "1px solid var(--border)",
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 16,
-  },
-  title: { fontSize: 18, fontWeight: 600, color: "var(--text)", margin: 0 },
-  subtitle: { fontSize: 13, color: "var(--text-dim)", lineHeight: 1.6, margin: "10px 0 22px" },
-  inputRow: {
-    width: "100%",
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    height: 46,
-    padding: "0 14px",
-    borderRadius: 11,
-    border: "1px solid var(--border-strong)",
-    background: "var(--bg-elevated)",
-  },
-  input: {
-    flex: 1,
-    background: "transparent",
-    border: "none",
-    outline: "none",
-    color: "var(--text)",
-    fontSize: 15,
-    letterSpacing: 2,
-    fontVariantNumeric: "tabular-nums",
-  },
-  error: { width: "100%", textAlign: "left", color: "#ff8c8c", fontSize: 12.5, marginTop: 8 },
-  button: {
-    width: "100%",
-    height: 44,
-    marginTop: 16,
-    borderRadius: 11,
-    border: "none",
-    background: "var(--btn-primary)",
-    color: "#161618",
-    fontSize: 14,
-    fontWeight: 600,
-    cursor: "pointer",
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    boxShadow: "var(--shadow-btn)",
-  },
-  loading: { display: "flex", alignItems: "center", gap: 8, color: "var(--text-dim)", fontSize: 13, marginTop: 8 },
-};
