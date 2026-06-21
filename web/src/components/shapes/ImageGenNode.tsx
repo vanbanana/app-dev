@@ -554,8 +554,8 @@ const S: Record<string, CSSProperties> = {
     bottom: "calc(100% + 8px)",
     left: 0,
     minWidth: 196,
-    background: "var(--bg-panel)",
-    border: "1px solid var(--border)",
+    background: "#1d1d20",
+    border: "1px solid var(--border-strong)",
     borderRadius: 12,
     padding: 6,
     boxShadow: "var(--shadow-panel)",
@@ -563,6 +563,7 @@ const S: Record<string, CSSProperties> = {
     flexDirection: "column",
     gap: 2,
     zIndex: 30,
+    isolation: "isolate",
   },
   skillItem: {
     display: "flex",
