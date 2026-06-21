@@ -1,21 +1,32 @@
 @import "tailwindcss";
 
-/* ---- Design tokens (dark) ------------------------------------------------ */
+/* ---- Design tokens (monochrome dark) ------------------------------------ */
 :root {
-  --bg: #0c0c0f;
-  --bg-elevated: #16161b;
-  --bg-panel: #1a1a20;
-  --bg-hover: #24242c;
-  --border: #2a2a32;
-  --border-strong: #3a3a44;
-  --text: #ededf0;
-  --text-dim: #9a9aa4;
-  --text-faint: #6a6a74;
-  --accent: #6e7bff;
-  --accent-hover: #8089ff;
-  --accent-soft: rgba(110, 123, 255, 0.16);
+  --bg: #0a0a0b;
+  --bg-elevated: #141416;
+  --bg-panel: #161618;
+  --bg-hover: #262629;
+  --border: #29292c;
+  --border-strong: #3a3a3e;
+  --text: #f3f3f4;
+  --text-dim: #9c9ca1;
+  --text-faint: #67676c;
+
+  /* neutral "accent" = light, used for focus / selection / subtle highlights */
+  --accent: #d6d6d9;
+  --accent-soft: rgba(255, 255, 255, 0.08);
+
+  /* premium gradients + shadows */
+  --panel-grad: linear-gradient(180deg, #1b1b1e 0%, #141416 100%);
+  --bar-grad: linear-gradient(180deg, #1d1d20 0%, #161618 100%);
+  --btn-primary: linear-gradient(180deg, #fbfbfc 0%, #d7d7da 100%);
+  --btn-primary-text: #161618;
+  --btn-soft: linear-gradient(180deg, #2c2c30 0%, #202023 100%);
+
   --radius: 14px;
-  --shadow-panel: 0 8px 30px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --shadow-panel: 0 10px 34px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(255, 255, 255, 0.05) inset;
+  --shadow-btn: 0 1px 2px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  --shadow-soft: 0 1px 1px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 @theme inline {
@@ -57,8 +68,8 @@ body {
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(120% 120% at 50% 0%, rgba(110, 123, 255, 0.05) 0%, rgba(12, 12, 15, 0) 55%),
-    radial-gradient(140% 100% at 50% 120%, rgba(0, 0, 0, 0.55) 0%, rgba(12, 12, 15, 0) 60%),
+    radial-gradient(120% 120% at 50% -10%, rgba(255, 255, 255, 0.045) 0%, rgba(10, 10, 11, 0) 50%),
+    radial-gradient(160% 120% at 50% 120%, rgba(0, 0, 0, 0.6) 0%, rgba(10, 10, 11, 0) 60%),
     var(--bg);
 }
 .canvas-texture::after {
@@ -73,11 +84,16 @@ body {
 }
 
 /* ---- tldraw dark overrides ---------------------------------------------- */
-.tl-container {
-  --color-background: var(--bg);
-  --color-grid: rgba(255, 255, 255, 0.05);
-  --color-selected: var(--accent);
-  --color-selection-stroke: var(--accent);
+.tl-container,
+.tl-theme__dark,
+.tl-theme__light {
+  --color-background: var(--bg) !important;
+  --color-grid: rgba(255, 255, 255, 0.05) !important;
+  --color-selected: #cfcfd3 !important;
+  --color-selected-contrast: #161618 !important;
+  --color-selection-stroke: #cfcfd3 !important;
+  --color-selection-fill: rgba(207, 207, 211, 0.1) !important;
+  --color-focus: #cfcfd3 !important;
 }
 
 @keyframes spin {

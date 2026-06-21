@@ -10,7 +10,7 @@ export function TopBar() {
     <div style={S.wrap}>
       <div style={S.left}>
         <div style={S.logo}>
-          <Box size={16} style={{ color: "var(--accent)" }} />
+          <Box size={16} style={{ color: "var(--text)" }} />
         </div>
         <input
           value={name}
@@ -24,7 +24,7 @@ export function TopBar() {
 
       <div style={S.right}>
         <div style={S.credits}>
-          <Zap size={13} style={{ color: "#f5c451" }} fill="#f5c451" />
+          <Zap size={13} style={{ color: "#cfcfd3" }} fill="#cfcfd3" />
           <span style={{ fontVariantNumeric: "tabular-nums" }}>30</span>
         </div>
         <div style={S.avatar}>A</div>
@@ -43,8 +43,9 @@ const pill: CSSProperties = {
   gap: 6,
   height: 34,
   borderRadius: 10,
-  background: "var(--bg-panel)",
+  background: "var(--bar-grad)",
   border: "1px solid var(--border)",
+  boxShadow: "var(--shadow-soft)",
   padding: "0 11px",
   fontSize: 13,
   color: "var(--text)",
@@ -87,7 +88,8 @@ const S: Record<string, CSSProperties> = {
     width: 30,
     height: 30,
     borderRadius: "50%",
-    background: "linear-gradient(135deg, var(--accent), #b06eff)",
+    background: "linear-gradient(135deg, #4a4a4f 0%, #1d1d20 100%)",
+    border: "1px solid var(--border-strong)",
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",

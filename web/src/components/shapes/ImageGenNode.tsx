@@ -77,7 +77,7 @@ export function ImageGenNode({ shape, editor }: { shape: ImageGenShape; editor: 
       {/* Title row */}
       <div style={S.titleRow}>
         <span style={S.titleLeft}>
-          <Sparkles size={13} style={{ color: "var(--accent)" }} />
+          <Sparkles size={13} style={{ color: "var(--text-dim)" }} />
           Image Generator
         </span>
         <span style={S.dims}>{ratioToSize(p.ratio).replace("x", " × ")}</span>
@@ -89,7 +89,7 @@ export function ImageGenNode({ shape, editor }: { shape: ImageGenShape; editor: 
           <img src={p.imageUrl} alt="生成结果" style={S.image} draggable={false} />
         ) : p.status === "generating" ? (
           <div style={S.center}>
-            <Loader2 size={26} style={{ color: "var(--accent)", animation: "spin 1s linear infinite" }} />
+            <Loader2 size={26} style={{ color: "var(--text-dim)", animation: "spin 1s linear infinite" }} />
             <span style={S.hint}>正在生成三视图…</span>
           </div>
         ) : p.status === "error" ? (
@@ -263,7 +263,7 @@ const S: Record<string, CSSProperties> = {
     marginTop: 14,
     flex: 1,
     borderRadius: 14,
-    background: "var(--bg-panel)",
+    background: "var(--panel-grad)",
     border: "1px solid var(--border)",
     boxShadow: "var(--shadow-panel)",
     padding: 12,
@@ -343,11 +343,12 @@ const S: Record<string, CSSProperties> = {
     ...ICON_BTN,
     border: "none",
     borderRadius: 10,
-    background: "var(--accent)",
-    color: "#fff",
+    background: "var(--btn-primary)",
+    color: "var(--btn-primary-text)",
     fontSize: 12.5,
     fontWeight: 600,
     padding: "7px 14px",
     cursor: "pointer",
+    boxShadow: "var(--shadow-btn)",
   },
 };

@@ -35,7 +35,7 @@ const S: Record<string, CSSProperties> = {
     gap: 2,
     padding: 4,
     borderRadius: 12,
-    background: "var(--bg-panel)",
+    background: "var(--bar-grad)",
     border: "1px solid var(--border)",
     boxShadow: "var(--shadow-panel)",
     pointerEvents: "all",
