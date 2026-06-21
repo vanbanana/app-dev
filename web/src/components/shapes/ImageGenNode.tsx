@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import type { Editor } from "tldraw";
+import { useValue, type Editor } from "tldraw";
 import {
   ImagePlus,
   Sparkles,
@@ -38,6 +38,13 @@ import { CropOverlay } from "../CropOverlay";
 
 const RATIOS = ["3:2", "2:3", "1:1", "16:9"];
 
+// Layout constants are inlined here (rather than imported from
+// ImageGenShapeUtil) to avoid a circular-import TDZ: ImageGenShapeUtil imports
+// this module at its top, so its `const`s aren't initialized yet when the
+// module-level `S` style object below is evaluated.
+const GAP_1 = 10;
+const GAP_2 = 14;
+
 // Stop tldraw from hijacking pointer + keyboard events on interactive controls.
 const interactive = {
   "data-interactive": true,
@@ -60,6 +67,14 @@ export function ImageGenNode({ shape, editor }: { shape: ImageGenShape; editor: 
   const presentation = p.presentation === true;
   const threeView = isThreeView(p.skill);
   const fH = frameHeight(p.w, p.ratio);
+
+  // The prompt panel only shows while this node is selected (lovart-style):
+  // click empty canvas to deselect and the panel hides.
+  const selected = useValue(
+    "image-gen-selected",
+    () => editor.getSelectedShapeIds().includes(shape.id),
+    [editor, shape.id],
+  );
 
   // Keep the shape's box height in sync with its borderless layout (also
   // self-heals nodes persisted under an older height formula).
@@ -135,8 +150,15 @@ export function ImageGenNode({ shape, editor }: { shape: ImageGenShape; editor: 
         </div>
       )}
 
-      {/* Frame */}
-      <div style={{ ...S.frame, height: fH, marginTop: presentation ? 0 : 10 }}>
+      {/* Frame — selection box wraps only this region (see indicator) */}
+      <div
+        style={{
+          ...S.frame,
+          height: fH,
+          marginTop: presentation ? 0 : GAP_1,
+          border: presentation ? "none" : "1px solid var(--border)",
+        }}
+      >
         {p.status === "done" && p.imageUrl ? (
           <img src={p.imageUrl} alt="生成结果" style={S.image} draggable={false} />
         ) : p.status === "generating" ? (
@@ -223,8 +245,8 @@ export function ImageGenNode({ shape, editor }: { shape: ImageGenShape; editor: 
         />
       )}
 
-      {/* Prompt panel (full editor card only) */}
-      {!presentation && (
+      {/* Prompt panel — floats below the image, only while selected */}
+      {!presentation && selected && (
       <div style={S.panel} {...interactive}>
         <div style={S.panelTop}>
           <label style={S.ref} {...interactive}>
@@ -382,6 +404,7 @@ const S: Record<string, CSSProperties> = {
     boxShadow: "var(--shadow-panel)",
   },
   rootBare: {
+    position: "relative",
     width: "100%",
     height: "100%",
     display: "flex",
@@ -408,10 +431,9 @@ const S: Record<string, CSSProperties> = {
   },
   dims: { fontSize: 11.5, color: "var(--text-faint)", fontVariantNumeric: "tabular-nums" },
   frame: {
-    marginTop: 10,
     width: "100%",
     borderRadius: 12,
-    background: "transparent",
+    background: "var(--bg-elevated)",
     overflow: "hidden",
     position: "relative",
     display: "flex",
@@ -467,16 +489,20 @@ const S: Record<string, CSSProperties> = {
   cropLabel: { fontSize: 10.5, color: "var(--text-faint)" },
 
   panel: {
-    marginTop: 14,
-    flex: 1,
+    position: "absolute",
+    top: "100%",
+    left: 0,
+    right: 0,
+    marginTop: GAP_2,
+    height: 182,
     borderRadius: 14,
-    background: "var(--panel-grad)",
+    background: "var(--bg-panel)",
     border: "1px solid var(--border)",
-    boxShadow: "var(--shadow-panel)",
     padding: 12,
     display: "flex",
     flexDirection: "column",
     gap: 10,
+    boxSizing: "border-box",
   },
   panelTop: { display: "flex", gap: 10, flex: 1, minHeight: 0 },
   ref: {

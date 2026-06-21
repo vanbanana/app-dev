@@ -9,7 +9,7 @@ import {
   type TLBaseShape,
 } from "tldraw";
 import { ImageGenNode } from "./ImageGenNode";
-import type { SkillId } from "@/lib/skills";
+import { isThreeView, type SkillId } from "@/lib/skills";
 
 export type ImageGenStyle = "realistic" | "chibi";
 export type ImageGenStatus = "idle" | "queued" | "generating" | "done" | "error";
@@ -72,8 +72,10 @@ export function totalHeight(
     // borderless result node: image spans the full width, no title / no panel
     return frame + crops;
   }
-  // borderless editor node: title + floating image + separate rounded input box
-  return TITLE_H + GAP_1 + frame + crops + GAP_2 + PANEL_H;
+  // Editor node geometry covers only the title + floating image (+ crops). The
+  // prompt panel is a floating overlay shown below the image when selected and
+  // is intentionally excluded from the box so deselecting leaves no dead space.
+  return TITLE_H + GAP_1 + frame + crops;
 }
 
 export function ratioToSize(ratio: string): string {
@@ -149,6 +151,7 @@ export class ImageGenShapeUtil extends BaseBoxShapeUtil<ImageGenShape> {
           width: shape.props.w,
           height: shape.props.h,
           pointerEvents: "all",
+          overflow: "visible",
         }}
         onPointerDown={(e) => {
           // Allow tldraw to start a drag from the title/frame, but never let a
@@ -164,6 +167,12 @@ export class ImageGenShapeUtil extends BaseBoxShapeUtil<ImageGenShape> {
   }
 
   override indicator(shape: ImageGenShape) {
-    return <rect width={shape.props.w} height={shape.props.h} rx={18} ry={18} />;
+    // The selection box wraps only the image/placeholder region, not the title
+    // and dimensions above it (and not the floating prompt panel below it).
+    const { w, ratio, status, presentation, skill } = shape.props;
+    const frame = frameHeight(w, ratio);
+    const crops = status === "done" && isThreeView(skill) ? CROPS_H : 0;
+    const top = presentation ? 0 : TITLE_H + GAP_1;
+    return <rect x={0} y={top} width={w} height={frame + crops} rx={12} ry={12} />;
   }
 }

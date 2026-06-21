@@ -16,6 +16,8 @@ export function createImageGenNode(editor: Editor): TLShapeId {
     y: center.y - h / 2,
     props: { w: NODE_W, h, style: defaultStyle, ratio: defaultRatio, createdAt: Date.now() },
   });
+  // Select so the prompt panel (shown only while selected) is visible at once.
+  editor.select(id);
   return id;
 }
 
