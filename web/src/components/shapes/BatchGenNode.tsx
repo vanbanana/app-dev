@@ -59,10 +59,11 @@ export function BatchGenNode({ shape, editor }: { shape: BatchGenShape; editor: 
     const s = editor.getShape<BatchGenShape>(shape.id);
     if (!s || s.props.started || s.props.images.length === 0) return;
     const { images, style, ratio } = s.props;
-    const childH = totalHeight(NODE_W, ratio);
+    const childH = totalHeight(NODE_W, ratio, false, true);
     const cols = Math.min(images.length, 3);
     const gapX = NODE_W + 56;
-    const gapY = childH + 64;
+    // rows must clear the node's *final* height (it grows once the三视图 crops appear)
+    const gapY = totalHeight(NODE_W, ratio, true, true) + 72;
     const startX = s.x;
     const startY = s.y + s.props.h + 64;
 
@@ -75,7 +76,7 @@ export function BatchGenNode({ shape, editor }: { shape: BatchGenShape; editor: 
         type: "image-gen",
         x: startX + col * gapX,
         y: startY + row * gapY,
-        props: { w: NODE_W, h: childH, style, ratio, referenceImage: img, createdAt: Date.now() },
+        props: { w: NODE_W, h: childH, style, ratio, referenceImage: img, presentation: true, createdAt: Date.now() },
       });
       return id;
     });

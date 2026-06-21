@@ -17,7 +17,6 @@ import {
   Clock,
 } from "lucide-react";
 import {
-  contentWidth,
   frameHeight,
   ratioToSize,
   totalHeight,
@@ -59,7 +58,18 @@ export function ImageGenNode({ shape, editor }: { shape: ImageGenShape; editor: 
   const [crops, setCrops] = useState<string[]>([]);
   const [showCrop, setShowCrop] = useState(false);
   const p = shape.props;
-  const fH = frameHeight(contentWidth(p.w), p.ratio);
+  const presentation = p.presentation === true;
+  const fH = frameHeight(p.w, p.ratio);
+
+  // Keep the shape's box height in sync with its borderless layout (also
+  // self-heals nodes persisted under an older height formula).
+  useEffect(() => {
+    const want = totalHeight(p.w, p.ratio, p.status === "done", presentation);
+    if (Math.abs(want - p.h) > 1) {
+      editor.updateShape<ImageGenShape>({ id: shape.id, type: "image-gen", props: { h: want } });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p.w, p.ratio, p.status, presentation]);
 
   // Recompute the three cropped thumbnails whenever the source/splits change.
   useEffect(() => {
@@ -85,7 +95,7 @@ export function ImageGenNode({ shape, editor }: { shape: ImageGenShape; editor: 
   }
 
   function setRatio(ratio: string) {
-    patch({ ratio, h: totalHeight(p.w, ratio, p.status === "done") });
+    patch({ ratio, h: totalHeight(p.w, ratio, p.status === "done", presentation) });
   }
 
   function applyManualSplits(splits: number[]) {
@@ -109,18 +119,20 @@ export function ImageGenNode({ shape, editor }: { shape: ImageGenShape; editor: 
   const busy = p.status === "generating" || p.status === "queued";
 
   return (
-    <div style={S.root}>
-      {/* Title row */}
-      <div style={S.titleRow}>
-        <span style={S.titleLeft}>
-          <Sparkles size={13} style={{ color: "var(--text-dim)" }} />
-          Image Generator
-        </span>
-        <span style={S.dims}>{ratioToSize(p.ratio).replace("x", " × ")}</span>
-      </div>
+    <div style={S.rootBare}>
+      {/* Title row (full editor card only) */}
+      {!presentation && (
+        <div style={S.titleRow}>
+          <span style={S.titleLeft}>
+            <Sparkles size={13} style={{ color: "var(--text-dim)" }} />
+            Image Generator
+          </span>
+          <span style={S.dims}>{ratioToSize(p.ratio).replace("x", " × ")}</span>
+        </div>
+      )}
 
       {/* Frame */}
-      <div style={{ ...S.frame, height: fH }}>
+      <div style={{ ...S.frame, height: fH, marginTop: presentation ? 0 : 10 }}>
         {p.status === "done" && p.imageUrl ? (
           <img src={p.imageUrl} alt="生成结果" style={S.image} draggable={false} />
         ) : p.status === "generating" ? (
@@ -197,7 +209,8 @@ export function ImageGenNode({ shape, editor }: { shape: ImageGenShape; editor: 
         />
       )}
 
-      {/* Prompt panel */}
+      {/* Prompt panel (full editor card only) */}
+      {!presentation && (
       <div style={S.panel} {...interactive}>
         <div style={S.panelTop}>
           <label style={S.ref} {...interactive}>
@@ -254,6 +267,7 @@ export function ImageGenNode({ shape, editor }: { shape: ImageGenShape; editor: 
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }
@@ -330,6 +344,16 @@ const S: Record<string, CSSProperties> = {
     background: "var(--bg-panel)",
     border: "1px solid var(--border)",
     boxShadow: "var(--shadow-panel)",
+  },
+  rootBare: {
+    width: "100%",
+    height: "100%",
+    display: "flex",
+    flexDirection: "column",
+    fontSize: 13,
+    color: "var(--text)",
+    userSelect: "none",
+    boxSizing: "border-box",
   },
   titleRow: {
     height: 24,

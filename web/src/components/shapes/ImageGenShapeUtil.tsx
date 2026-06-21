@@ -28,6 +28,8 @@ export type ImageGenShape = TLBaseShape<
     /** two split fractions (0..1) separating front/side/top; empty = uncropped */
     splits: number[];
     createdAt: number;
+    /** borderless "presentation" result node (batch output): no prompt panel */
+    presentation?: boolean;
   }
 >;
 
@@ -39,9 +41,9 @@ export const GAP_2 = 14;
 export const PANEL_H = 182;
 export const CROPS_H = 112;
 
-/** Inner content width once the card's horizontal padding is removed. */
+/** Borderless layout: the image spans the node's full width. */
 export function contentWidth(width: number): number {
-  return width - 2 * CARD_PAD;
+  return width;
 }
 
 export function ratioParts(ratio: string): [number, number] {
@@ -55,16 +57,20 @@ export function frameHeight(width: number, ratio: string): number {
   return Math.round((width * h) / w);
 }
 
-export function totalHeight(width: number, ratio: string, hasCrops = false): number {
-  return (
-    2 * CARD_PAD +
-    TITLE_H +
-    GAP_1 +
-    frameHeight(contentWidth(width), ratio) +
-    (hasCrops ? CROPS_H : 0) +
-    GAP_2 +
-    PANEL_H
-  );
+export function totalHeight(
+  width: number,
+  ratio: string,
+  hasCrops = false,
+  presentation = false,
+): number {
+  const frame = frameHeight(width, ratio);
+  const crops = hasCrops ? CROPS_H : 0;
+  if (presentation) {
+    // borderless result node: image spans the full width, no title / no panel
+    return frame + crops;
+  }
+  // borderless editor node: title + floating image + separate rounded input box
+  return TITLE_H + GAP_1 + frame + crops + GAP_2 + PANEL_H;
 }
 
 export function ratioToSize(ratio: string): string {
@@ -95,6 +101,7 @@ export class ImageGenShapeUtil extends BaseBoxShapeUtil<ImageGenShape> {
     error: T.string,
     splits: T.arrayOf(T.number),
     createdAt: T.number,
+    presentation: T.boolean.optional(),
   };
 
   override getDefaultProps(): ImageGenShape["props"] {
@@ -110,6 +117,7 @@ export class ImageGenShapeUtil extends BaseBoxShapeUtil<ImageGenShape> {
       error: "",
       splits: [],
       createdAt: Date.now(),
+      presentation: false,
     };
   }
 

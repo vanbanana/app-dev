@@ -5,6 +5,38 @@ import { detectSplits } from "./crop";
 import { getSettings } from "./settings";
 import { applyInvite, getCode, type Invite } from "./invite";
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * POST to /api/generate with retries. The reference-image path goes through
+ * the upstream `/v1/images/edits` endpoint, which is heavier and slower than
+ * text-only generation; over a tunnel the connection can drop mid-request and
+ * surface as a client-side "Failed to fetch". We retry on thrown network
+ * errors and on transient gateway statuses (502/503/504) with backoff.
+ */
+async function postGenerate(body: string, retries = 2): Promise<Response> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+      });
+      if ((res.status === 502 || res.status === 503 || res.status === 504) && attempt < retries) {
+        await sleep(900 * (attempt + 1));
+        continue;
+      }
+      return res;
+    } catch (err) {
+      lastErr = err;
+      if (attempt >= retries) break;
+      await sleep(900 * (attempt + 1));
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error("网络请求失败，请重试");
+}
+
 // ---- concurrency limiter -------------------------------------------------
 let active = 0;
 const queue: Array<() => void> = [];
@@ -46,7 +78,11 @@ export async function runGeneration(editor: Editor, id: ImageGenShape["id"]): Pr
   editor.updateShape<ImageGenShape>({
     id,
     type: "image-gen",
-    props: { status: "queued", error: "", h: totalHeight(shape.props.w, shape.props.ratio, false) },
+    props: {
+      status: "queued",
+      error: "",
+      h: totalHeight(shape.props.w, shape.props.ratio, false, shape.props.presentation),
+    },
   });
 
   await enqueue(async () => {
@@ -54,17 +90,15 @@ export async function runGeneration(editor: Editor, id: ImageGenShape["id"]): Pr
     if (!s) return;
     editor.updateShape<ImageGenShape>({ id, type: "image-gen", props: { status: "generating", error: "" } });
     try {
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const res = await postGenerate(
+        JSON.stringify({
           style: s.props.style,
           prompt: s.props.prompt,
           size: ratioToSize(s.props.ratio),
           referenceImage: s.props.referenceImage || undefined,
           code: getCode() ?? undefined,
         }),
-      });
+      );
       const data = (await res.json()) as { image?: string; error?: string; invite?: Invite };
       if (data.invite) applyInvite(data.invite);
       if (!res.ok || !data.image) throw new Error(data.error || `请求失败 (${res.status})`);
@@ -73,7 +107,7 @@ export async function runGeneration(editor: Editor, id: ImageGenShape["id"]): Pr
         status: "done",
         imageUrl: data.image,
         splits: [],
-        h: totalHeight(s.props.w, s.props.ratio, true),
+        h: totalHeight(s.props.w, s.props.ratio, true, s.props.presentation),
       };
       if (getSettings().autoCrop) {
         try {
