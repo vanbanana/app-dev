@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { Tldraw, type Editor, type TLComponents } from "tldraw";
 import "tldraw/tldraw.css";
 import { ImageGenShapeUtil } from "./shapes/ImageGenShapeUtil";
+import { BatchGenShapeUtil } from "./shapes/BatchGenShapeUtil";
 import { createImageGenNode } from "./canvas-actions";
 import { TopBar } from "./TopBar";
 import { Toolbar } from "./Toolbar";
@@ -12,7 +13,7 @@ import { HistoryPanel } from "./HistoryPanel";
 import { SettingsPanel } from "./SettingsPanel";
 import { useOpenPanel } from "@/lib/ui-store";
 
-const customShapeUtils = [ImageGenShapeUtil];
+const customShapeUtils = [ImageGenShapeUtil, BatchGenShapeUtil];
 
 function TextureBackground() {
   return <div className="canvas-texture" />;

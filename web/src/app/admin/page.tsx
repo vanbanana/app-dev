@@ -11,6 +11,8 @@ import {
   Power,
   RefreshCw,
   LogOut,
+  KeyRound,
+  Save,
 } from "lucide-react";
 
 type CodeView = {
@@ -211,6 +213,8 @@ function Dashboard({ pw, onLogout }: { pw: string; onLogout: () => void }) {
         <Stat label="剩余" value={totalQuota - totalUsed} />
       </div>
 
+      <GenConfigCard headers={headers} />
+
       <div style={S.createCard}>
         <span style={S.cardTitle}>新建邀请码</span>
         <div style={S.createRow}>
@@ -298,6 +302,124 @@ function Dashboard({ pw, onLogout }: { pw: string; onLogout: () => void }) {
           </table>
         )}
       </div>
+    </div>
+  );
+}
+
+type ConfigView = {
+  hasApiKey: boolean;
+  apiKeyMasked: string;
+  apiKeySource: "db" | "env" | "none";
+  baseUrl: string;
+  baseUrlSource: "db" | "env" | "default";
+  model: string;
+  modelSource: "db" | "env" | "default";
+};
+
+const SOURCE_LABEL: Record<string, string> = {
+  db: "后台配置",
+  env: "环境变量",
+  default: "默认值",
+  none: "未配置",
+};
+
+function GenConfigCard({ headers }: { headers: (json?: boolean) => HeadersInit }) {
+  const [cfg, setCfg] = useState<ConfigView | null>(null);
+  const [apiKey, setApiKey] = useState("");
+  const [baseUrl, setBaseUrl] = useState("");
+  const [model, setModel] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const load = useCallback(async () => {
+    const res = await fetch("/api/admin/config", { headers: headers() });
+    const json = (await res.json()) as { config?: ConfigView };
+    if (json.config) {
+      setCfg(json.config);
+      setBaseUrl(json.config.baseUrl);
+      setModel(json.config.model);
+    }
+  }, [headers]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function save() {
+    setSaving(true);
+    setSaved(false);
+    try {
+      const payload: { apiKey?: string; baseUrl?: string; model?: string } = { baseUrl, model };
+      if (apiKey.trim()) payload.apiKey = apiKey.trim();
+      const res = await fetch("/api/admin/config", {
+        method: "POST",
+        headers: headers(true),
+        body: JSON.stringify(payload),
+      });
+      const json = (await res.json()) as { config?: ConfigView };
+      if (json.config) {
+        setCfg(json.config);
+        setBaseUrl(json.config.baseUrl);
+        setModel(json.config.model);
+      }
+      setApiKey("");
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1500);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div style={S.createCard}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <KeyRound size={15} style={{ color: "var(--text-dim)" }} />
+        <span style={S.cardTitle}>生图配置</span>
+      </div>
+
+      <div style={S.cfgCurrent}>
+        <CfgStat
+          label="API Key"
+          value={cfg?.hasApiKey ? cfg.apiKeyMasked : "未配置"}
+          source={cfg ? SOURCE_LABEL[cfg.apiKeySource] : ""}
+          warn={!cfg?.hasApiKey}
+        />
+        <CfgStat label="Base URL" value={cfg?.baseUrl ?? ""} source={cfg ? SOURCE_LABEL[cfg.baseUrlSource] : ""} />
+        <CfgStat label="模型" value={cfg?.model ?? ""} source={cfg ? SOURCE_LABEL[cfg.modelSource] : ""} />
+      </div>
+
+      <div style={S.createRow}>
+        <Labeled label="API Key（留空则不修改）">
+          <input
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder={cfg?.hasApiKey ? "已配置，输入可覆盖" : "sk-..."}
+            style={{ ...S.textInput, width: 280, fontFamily: "ui-monospace, monospace" }}
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </Labeled>
+        <Labeled label="Base URL">
+          <input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://api.bltcy.ai" style={{ ...S.textInput, width: 240 }} spellCheck={false} />
+        </Labeled>
+        <Labeled label="模型">
+          <input value={model} onChange={(e) => setModel(e.target.value)} placeholder="gpt-image-1" style={{ ...S.textInput, width: 160 }} spellCheck={false} />
+        </Labeled>
+        <button style={S.primaryBtnSm} onClick={() => void save()} disabled={saving}>
+          {saving ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : saved ? <Check size={14} /> : <Save size={14} />}
+          {saved ? "已保存" : "保存"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CfgStat({ label, value, source, warn }: { label: string; value: string; source: string; warn?: boolean }) {
+  return (
+    <div style={S.cfgStat}>
+      <span style={S.labeledText}>{label}</span>
+      <span style={{ ...S.cfgValue, color: warn ? "#ff8c8c" : "var(--text)" }}>{value || "—"}</span>
+      {source && <span style={S.cfgSource}>{source}</span>}
     </div>
   );
 }
@@ -413,6 +535,25 @@ const S: Record<string, CSSProperties> = {
     boxShadow: "var(--shadow-soft)",
   },
   cardTitle: { fontSize: 13.5, fontWeight: 600, color: "var(--text)" },
+  cfgCurrent: {
+    display: "flex",
+    gap: 10,
+    flexWrap: "wrap",
+    margin: "14px 0 4px",
+  },
+  cfgStat: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
+    minWidth: 150,
+    flex: 1,
+    background: "var(--bg-elevated)",
+    border: "1px solid var(--border)",
+    borderRadius: 10,
+    padding: "10px 12px",
+  },
+  cfgValue: { fontSize: 13, fontFamily: "ui-monospace, monospace", wordBreak: "break-all" },
+  cfgSource: { fontSize: 10.5, color: "var(--text-faint)" },
   createRow: { display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap", marginTop: 14 },
   labeled: { display: "flex", flexDirection: "column", gap: 6 },
   labeledText: { fontSize: 11.5, color: "var(--text-faint)" },

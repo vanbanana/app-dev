@@ -31,6 +31,10 @@ function init(): Database.Database {
       note       TEXT,
       created_at INTEGER NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS app_config (
+      key   TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
   `);
   return db;
 }
@@ -115,6 +119,85 @@ export function refundQuota(code: string): InviteCodeRow | undefined {
     .prepare("UPDATE invite_codes SET used = MAX(0, used - 1) WHERE code = ?")
     .run(normalized);
   return findCode(normalized);
+}
+
+// ---- app config (gen API key / base url / model) ------------------------
+
+export const DEFAULT_BASE_URL = "https://api.bltcy.ai";
+export const DEFAULT_MODEL = "gpt-image-1";
+
+type ConfigRow = { key: string; value: string };
+
+export function getConfigValue(key: string): string | undefined {
+  const row = getDb().prepare("SELECT value FROM app_config WHERE key = ?").get(key) as
+    | ConfigRow
+    | undefined;
+  return row?.value;
+}
+
+export function setConfigValue(key: string, value: string): void {
+  getDb()
+    .prepare(
+      "INSERT INTO app_config (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+    )
+    .run(key, value);
+}
+
+export function deleteConfigValue(key: string): void {
+  getDb().prepare("DELETE FROM app_config WHERE key = ?").run(key);
+}
+
+export type GenConfig = {
+  apiKey: string;
+  baseUrl: string;
+  model: string;
+  apiKeySource: "db" | "env" | "none";
+  baseUrlSource: "db" | "env" | "default";
+  modelSource: "db" | "env" | "default";
+};
+
+/** Resolved generation config: DB overrides env, env overrides built-in defaults. */
+export function getGenConfig(): GenConfig {
+  const dbKey = getConfigValue("api_key");
+  const dbBase = getConfigValue("base_url");
+  const dbModel = getConfigValue("model");
+
+  const envKey = process.env.BLTCY_API_KEY;
+  const envBase = process.env.BLTCY_BASE_URL;
+  const envModel = process.env.IMAGE_MODEL;
+
+  const apiKey = dbKey ?? envKey ?? "";
+  const baseUrl = (dbBase ?? envBase ?? DEFAULT_BASE_URL).replace(/\/$/, "");
+  const model = dbModel ?? envModel ?? DEFAULT_MODEL;
+
+  return {
+    apiKey,
+    baseUrl,
+    model,
+    apiKeySource: dbKey ? "db" : envKey ? "env" : "none",
+    baseUrlSource: dbBase ? "db" : envBase ? "env" : "default",
+    modelSource: dbModel ? "db" : envModel ? "env" : "default",
+  };
+}
+
+function maskKey(key: string): string {
+  if (!key) return "";
+  if (key.length <= 6) return "••••••";
+  return `${key.slice(0, 3)}••••••${key.slice(-4)}`;
+}
+
+/** Config safe to expose to the admin UI (key is masked, never returned in full). */
+export function genConfigPublic() {
+  const c = getGenConfig();
+  return {
+    hasApiKey: !!c.apiKey,
+    apiKeyMasked: maskKey(c.apiKey),
+    apiKeySource: c.apiKeySource,
+    baseUrl: c.baseUrl,
+    baseUrlSource: c.baseUrlSource,
+    model: c.model,
+    modelSource: c.modelSource,
+  };
 }
 
 export function publicView(row: InviteCodeRow) {

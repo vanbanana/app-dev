@@ -13,7 +13,7 @@ import {
   Sparkles,
   Images,
 } from "lucide-react";
-import { addImageFromFile, createImageGenNode, createImageGenNodesFromFiles } from "./canvas-actions";
+import { addImageFromFile, createImageGenNode, createBatchNodeFromFiles } from "./canvas-actions";
 
 export function Toolbar() {
   const editor = useEditor();
@@ -84,7 +84,7 @@ export function Toolbar() {
         style={{ display: "none" }}
         onChange={(e) => {
           const files = Array.from(e.target.files ?? []);
-          if (files.length) void createImageGenNodesFromFiles(editor, files);
+          if (files.length) void createBatchNodeFromFiles(editor, files);
           e.target.value = "";
         }}
       />

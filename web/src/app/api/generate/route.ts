@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildPrompt, type PromptStyle } from "@/lib/prompts";
-import { consumeQuota, refundQuota, findCode, publicView } from "@/lib/db";
+import { consumeQuota, refundQuota, findCode, publicView, getGenConfig } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
-
-const DEFAULT_BASE_URL = "https://api.bltcy.ai";
-const DEFAULT_MODEL = "gpt-image-1";
 
 type GenerateBody = {
   style?: PromptStyle;
@@ -29,6 +26,30 @@ function dataUrlToBuffer(dataUrl: string): { buffer: Buffer; mime: string } {
   return { mime: match[1], buffer: Buffer.from(match[2], "base64") };
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Fetch with a couple of retries on transient network errors (the upstream
+ * proxy occasionally drops connections under concurrent load, surfacing as
+ * "fetch failed"). Only retries on thrown network errors, not HTTP statuses.
+ */
+async function fetchWithRetry(
+  input: string,
+  init: RequestInit,
+  retries = 2,
+): Promise<Response> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fetch(input, init);
+    } catch (err) {
+      lastErr = err;
+      if (attempt < retries) await sleep(600 * (attempt + 1));
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error("网络请求失败");
+}
+
 async function toDataUrl(item: { b64_json?: string; url?: string }): Promise<string> {
   if (item.b64_json) return `data:image/png;base64,${item.b64_json}`;
   if (item.url) {
@@ -42,15 +63,13 @@ async function toDataUrl(item: { b64_json?: string; url?: string }): Promise<str
 }
 
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.BLTCY_API_KEY;
+  const { apiKey, baseUrl, model: configuredModel } = getGenConfig();
   if (!apiKey) {
     return NextResponse.json(
-      { error: "Server is missing BLTCY_API_KEY. Set it in web/.env.local." },
+      { error: "尚未配置生图 API Key，请在后台「生图配置」中填写。" },
       { status: 500 },
     );
   }
-
-  const baseUrl = (process.env.BLTCY_BASE_URL ?? DEFAULT_BASE_URL).replace(/\/$/, "");
 
   let body: GenerateBody;
   try {
@@ -72,7 +91,7 @@ export async function POST(req: NextRequest) {
 
   const style: PromptStyle = body.style === "chibi" ? "chibi" : "realistic";
   const size = body.size?.trim() || "1536x1024";
-  const model = body.model?.trim() || process.env.IMAGE_MODEL || DEFAULT_MODEL;
+  const model = body.model?.trim() || configuredModel;
   const prompt = buildPrompt(style, body.prompt);
 
   try {
@@ -87,13 +106,13 @@ export async function POST(req: NextRequest) {
       form.append("model", model);
       form.append("n", "1");
 
-      upstream = await fetch(`${baseUrl}/v1/images/edits`, {
+      upstream = await fetchWithRetry(`${baseUrl}/v1/images/edits`, {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}` },
         body: form,
       });
     } else {
-      upstream = await fetch(`${baseUrl}/v1/images/generations`, {
+      upstream = await fetchWithRetry(`${baseUrl}/v1/images/generations`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey}`,

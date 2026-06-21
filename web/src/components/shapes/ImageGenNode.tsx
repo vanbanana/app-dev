@@ -17,6 +17,7 @@ import {
   Clock,
 } from "lucide-react";
 import {
+  contentWidth,
   frameHeight,
   ratioToSize,
   totalHeight,
@@ -58,7 +59,7 @@ export function ImageGenNode({ shape, editor }: { shape: ImageGenShape; editor: 
   const [crops, setCrops] = useState<string[]>([]);
   const [showCrop, setShowCrop] = useState(false);
   const p = shape.props;
-  const fH = frameHeight(p.w, p.ratio);
+  const fH = frameHeight(contentWidth(p.w), p.ratio);
 
   // Recompute the three cropped thumbnails whenever the source/splits change.
   useEffect(() => {
@@ -323,9 +324,15 @@ const S: Record<string, CSSProperties> = {
     fontSize: 13,
     color: "var(--text)",
     userSelect: "none",
+    padding: 18,
+    boxSizing: "border-box",
+    borderRadius: 18,
+    background: "var(--bg-panel)",
+    border: "1px solid var(--border)",
+    boxShadow: "var(--shadow-panel)",
   },
   titleRow: {
-    height: 22,
+    height: 24,
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
@@ -341,7 +348,7 @@ const S: Record<string, CSSProperties> = {
   },
   dims: { fontSize: 11.5, color: "var(--text-faint)", fontVariantNumeric: "tabular-nums" },
   frame: {
-    marginTop: 8,
+    marginTop: 10,
     width: "100%",
     borderRadius: 12,
     background: "var(--bg-elevated)",
@@ -355,7 +362,7 @@ const S: Record<string, CSSProperties> = {
   center: { display: "flex", flexDirection: "column", alignItems: "center", gap: 10 },
   hint: { fontSize: 12, color: "var(--text-dim)" },
 
-  cropsWrap: { marginTop: 12, height: 92, display: "flex", flexDirection: "column", gap: 6 },
+  cropsWrap: { marginTop: 12, height: 100, display: "flex", flexDirection: "column", gap: 8 },
   cropsHeader: { display: "flex", alignItems: "center", justifyContent: "space-between" },
   cropsTitle: { fontSize: 12, fontWeight: 500, color: "var(--text-dim)" },
   cropActions: { display: "flex", alignItems: "center", gap: 4 },

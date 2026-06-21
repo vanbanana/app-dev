@@ -32,11 +32,17 @@ export type ImageGenShape = TLBaseShape<
 >;
 
 export const NODE_W = 460;
-export const TITLE_H = 22;
-export const GAP_1 = 8;
+export const CARD_PAD = 18;
+export const TITLE_H = 24;
+export const GAP_1 = 10;
 export const GAP_2 = 14;
 export const PANEL_H = 182;
-export const CROPS_H = 104;
+export const CROPS_H = 112;
+
+/** Inner content width once the card's horizontal padding is removed. */
+export function contentWidth(width: number): number {
+  return width - 2 * CARD_PAD;
+}
 
 export function ratioParts(ratio: string): [number, number] {
   const [a, b] = ratio.split(":").map((n) => Number(n));
@@ -51,9 +57,10 @@ export function frameHeight(width: number, ratio: string): number {
 
 export function totalHeight(width: number, ratio: string, hasCrops = false): number {
   return (
+    2 * CARD_PAD +
     TITLE_H +
     GAP_1 +
-    frameHeight(width, ratio) +
+    frameHeight(contentWidth(width), ratio) +
     (hasCrops ? CROPS_H : 0) +
     GAP_2 +
     PANEL_H
@@ -144,6 +151,6 @@ export class ImageGenShapeUtil extends BaseBoxShapeUtil<ImageGenShape> {
   }
 
   override indicator(shape: ImageGenShape) {
-    return <rect width={shape.props.w} height={shape.props.h} rx={16} ry={16} />;
+    return <rect width={shape.props.w} height={shape.props.h} rx={18} ry={18} />;
   }
 }
