@@ -1,0 +1,190 @@
+"use client";
+
+import {
+  BaseBoxShapeUtil,
+  HTMLContainer,
+  T,
+  stopEventPropagation,
+  type RecordProps,
+  type TLBaseShape,
+} from "tldraw";
+import { ImageGenNode } from "./ImageGenNode";
+import { isThreeView, type SkillId } from "@/lib/skills";
+
+export type ImageGenStyle = "realistic" | "chibi";
+export type ImageGenStatus = "idle" | "queued" | "generating" | "done" | "error";
+
+export type ImageGenShape = TLBaseShape<
+  "image-gen",
+  {
+    w: number;
+    h: number;
+    prompt: string;
+    style: ImageGenStyle;
+    ratio: string;
+    status: ImageGenStatus;
+    imageUrl: string;
+    referenceImage: string;
+    error: string;
+    /** two split fractions (0..1) separating front/side/top; empty = uncropped */
+    splits: number[];
+    createdAt: number;
+    /** borderless "presentation" result node (batch output): no prompt panel */
+    presentation?: boolean;
+    /** modular generation skill: general image, or three-view (realistic/chibi) */
+    skill?: SkillId;
+  }
+>;
+
+export const NODE_W = 460;
+export const CARD_PAD = 18;
+export const TITLE_H = 24;
+export const GAP_1 = 10;
+export const GAP_2 = 14;
+export const PANEL_H = 182;
+export const CROPS_H = 112;
+
+/** Borderless layout: the image spans the node's full width. */
+export function contentWidth(width: number): number {
+  return width;
+}
+
+export function ratioParts(ratio: string): [number, number] {
+  const [a, b] = ratio.split(":").map((n) => Number(n));
+  if (!a || !b) return [3, 2];
+  return [a, b];
+}
+
+export function frameHeight(width: number, ratio: string): number {
+  const [w, h] = ratioParts(ratio);
+  return Math.round((width * h) / w);
+}
+
+export function totalHeight(
+  width: number,
+  ratio: string,
+  hasCrops = false,
+  presentation = false,
+): number {
+  const frame = frameHeight(width, ratio);
+  const crops = hasCrops ? CROPS_H : 0;
+  if (presentation) {
+    // borderless result node: image spans the full width, no title / no panel
+    return frame + crops;
+  }
+  // Editor node geometry covers only the title + floating image (+ crops). The
+  // prompt panel is a floating overlay shown below the image when selected and
+  // is intentionally excluded from the box so deselecting leaves no dead space.
+  return TITLE_H + GAP_1 + frame + crops;
+}
+
+export function ratioToSize(ratio: string): string {
+  switch (ratio) {
+    case "2:3":
+      return "1024x1536";
+    case "1:1":
+      return "1024x1024";
+    case "16:9":
+    case "3:2":
+    default:
+      return "1536x1024";
+  }
+}
+
+export class ImageGenShapeUtil extends BaseBoxShapeUtil<ImageGenShape> {
+  static override type = "image-gen" as const;
+
+  static override props: RecordProps<ImageGenShape> = {
+    w: T.number,
+    h: T.number,
+    prompt: T.string,
+    style: T.literalEnum("realistic", "chibi"),
+    ratio: T.string,
+    status: T.literalEnum("idle", "queued", "generating", "done", "error"),
+    imageUrl: T.string,
+    referenceImage: T.string,
+    error: T.string,
+    splits: T.arrayOf(T.number),
+    createdAt: T.number,
+    presentation: T.boolean.optional(),
+    skill: T.literalEnum("general", "realistic", "chibi").optional(),
+  };
+
+  override getDefaultProps(): ImageGenShape["props"] {
+    return {
+      w: NODE_W,
+      h: totalHeight(NODE_W, "3:2"),
+      prompt: "",
+      style: "realistic",
+      ratio: "3:2",
+      status: "idle",
+      imageUrl: "",
+      referenceImage: "",
+      error: "",
+      splits: [],
+      createdAt: Date.now(),
+      presentation: false,
+      skill: "general",
+    };
+  }
+
+  override canResize() {
+    return false;
+  }
+
+  override canEdit() {
+    return false;
+  }
+
+  override hideRotateHandle() {
+    return true;
+  }
+
+  // The default selection box is drawn from the shape's full bounds (which
+  // include the title row); that line crosses over the name/dimensions while
+  // dragging. We hide it and rely solely on the custom indicator() below,
+  // which wraps only the image region.
+  override hideSelectionBoundsBg() {
+    return true;
+  }
+
+  override hideSelectionBoundsFg() {
+    return true;
+  }
+
+  override onResize(shape: ImageGenShape) {
+    return shape;
+  }
+
+  override component(shape: ImageGenShape) {
+    return (
+      <HTMLContainer
+        style={{
+          width: shape.props.w,
+          height: shape.props.h,
+          pointerEvents: "all",
+          overflow: "visible",
+        }}
+        onPointerDown={(e) => {
+          // Allow tldraw to start a drag from the title/frame, but never let a
+          // stray pointerdown bubble into text selection inside controls.
+          if ((e.target as HTMLElement).closest("[data-interactive]")) {
+            stopEventPropagation(e);
+          }
+        }}
+      >
+        <ImageGenNode shape={shape} editor={this.editor} />
+      </HTMLContainer>
+    );
+  }
+
+  override indicator(shape: ImageGenShape) {
+    // The selection box wraps only the image/placeholder region, not the title
+    // and dimensions above it (and not the floating prompt panel below it).
+    const { w, ratio, status, presentation, skill } = shape.props;
+    const frame = frameHeight(w, ratio);
+    const crops = status === "done" && isThreeView(skill) ? CROPS_H : 0;
+    const top = presentation ? 0 : TITLE_H + GAP_1;
+    return <rect x={0} y={top} width={w} height={frame + crops} rx={12} ry={12} />;
+  }
+}

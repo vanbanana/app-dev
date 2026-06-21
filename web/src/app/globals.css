@@ -1,0 +1,374 @@
+@import "tailwindcss";
+
+/* ---- Design tokens (monochrome dark) ------------------------------------ */
+:root {
+  --bg: #0a0a0b;
+  --bg-elevated: #141416;
+  --bg-panel: #161618;
+  --bg-hover: #262629;
+  --border: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.13);
+  --text: #f3f3f4;
+  --text-dim: #9c9ca1;
+  --text-faint: #67676c;
+
+  /* neutral "accent" = light, used for focus / selection / subtle highlights */
+  --accent: #d6d6d9;
+  --accent-soft: rgba(255, 255, 255, 0.08);
+
+  /* flat monochrome surfaces (no gradients) + shadows for depth */
+  --panel-grad: #18181b;
+  --bar-grad: #19191c;
+  --btn-primary: #f0f0f2;
+  --btn-primary-text: #161618;
+  --btn-soft: #242428;
+
+  --radius: 14px;
+  --shadow-panel: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --shadow-btn: 0 2px 6px rgba(0, 0, 0, 0.45);
+  --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-bg-panel: var(--bg-panel);
+  --color-bg-hover: var(--bg-hover);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-text-dim: var(--text-dim);
+  --color-text-faint: var(--text-faint);
+  --color-accent: var(--accent);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans), system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+/* ---- Canvas texture ------------------------------------------------------ */
+.canvas-texture {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(80% 80% at 50% 30%, rgba(255, 255, 255, 0.018) 0%, rgba(10, 10, 11, 0) 70%),
+    var(--bg);
+}
+.canvas-texture::after {
+  /* fine grain noise for the "high-end" feel */
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.03;
+  background-image: url("/noise.svg");
+  background-size: 200px 200px;
+  mix-blend-mode: screen;
+}
+
+/* ---- tldraw dark overrides ---------------------------------------------- */
+.tl-container,
+.tl-theme__dark,
+.tl-theme__light {
+  --color-background: var(--bg) !important;
+  --color-grid: rgba(255, 255, 255, 0.05) !important;
+  --color-selected: #cfcfd3 !important;
+  --color-selected-contrast: #161618 !important;
+  --color-selection-stroke: #cfcfd3 !important;
+  --color-selection-fill: rgba(207, 207, 211, 0.1) !important;
+  --color-focus: #cfcfd3 !important;
+}
+
+/* round the selection bounding box to match our rounded cards */
+.tl-selection__fg__outline {
+  rx: 18px;
+  ry: 18px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.tl-background {
+  background-color: transparent !important;
+}
+
+/* hide tldraw default focus ring noise on our custom shapes */
+.tl-svg-container {
+  color: inherit;
+}
+
+/* ---- invite gate (closed-beta, image-driven) --------------------------- */
+.gate {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--bg);
+  overflow: auto;
+}
+.gate__bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(70% 80% at 20% 22%, rgba(255, 255, 255, 0.02) 0%, rgba(10, 10, 11, 0) 60%);
+}
+.gate__bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.04;
+  background-image: url("/noise.svg");
+  background-size: 180px 180px;
+  mix-blend-mode: screen;
+}
+.gate__frame {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(440px, 1fr) 1.15fr;
+  overflow: hidden;
+}
+
+/* left: brand + minimal entry */
+.gate__brand {
+  padding: 56px 64px;
+  display: flex;
+  flex-direction: column;
+}
+.gate__brandTop {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+.gate__mark {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.gate__word {
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: 0.4px;
+  color: var(--text);
+}
+.gate__beta {
+  margin-left: 2px;
+  font-size: 10px;
+  letter-spacing: 1.6px;
+  font-weight: 600;
+  color: var(--text-dim);
+  border: 1px solid var(--border-strong);
+  border-radius: 20px;
+  padding: 3px 9px;
+}
+.gate__hero {
+  margin-top: auto;
+  margin-bottom: auto;
+  width: 100%;
+  max-width: 420px;
+}
+.gate__headline {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1.28;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: var(--text);
+}
+.gate__headline span {
+  color: var(--text-faint);
+}
+.gate__inputRow {
+  margin-top: 32px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 56px;
+  padding: 0 8px 0 18px;
+  border-radius: 14px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elevated);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.gate__inputRow:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.gate__input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-size: 16px;
+  letter-spacing: 3px;
+  font-variant-numeric: tabular-nums;
+}
+.gate__input::placeholder {
+  letter-spacing: 0.5px;
+  color: var(--text-faint);
+}
+.gate__submit {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 11px;
+  background: var(--btn-primary);
+  color: var(--btn-primary-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-btn);
+  transition: filter 0.12s ease, opacity 0.12s ease;
+}
+.gate__submit:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+.gate__submit:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.gate__error {
+  margin-top: 12px;
+  font-size: 12.5px;
+  color: #ff8c8c;
+  min-height: 15px;
+}
+.gate__foot {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-faint);
+  letter-spacing: 0.3px;
+}
+.gate__loading {
+  margin-top: 32px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--text-dim);
+  font-size: 13px;
+  height: 56px;
+}
+
+/* right: scrolling product showcase */
+.gate__show {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 12%, #000 88%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 12%, #000 88%, transparent 100%);
+}
+.gate__show::before {
+  /* soft seam so the wall fades into the brand column instead of a hard edge */
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(to right, var(--bg) 0%, rgba(10, 10, 11, 0) 16%);
+}
+.gate__track {
+  position: absolute;
+  inset: -6% -6%;
+  display: flex;
+  gap: 16px;
+  transform: rotate(-7deg) scale(1.16);
+  transform-origin: center;
+}
+.gate__col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: gateScrollUp 42s linear infinite;
+}
+.gate__col--b {
+  animation: gateScrollDown 50s linear infinite;
+}
+.gate__col--c {
+  animation: gateScrollUp 58s linear infinite;
+}
+@keyframes gateScrollUp {
+  from { transform: translateY(0); }
+  to { transform: translateY(-50%); }
+}
+@keyframes gateScrollDown {
+  from { transform: translateY(-50%); }
+  to { transform: translateY(0); }
+}
+.gate__shot {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: #f4f4f5;
+  box-shadow: var(--shadow-soft);
+}
+.gate__shot img {
+  width: 100%;
+  display: block;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gate__col,
+  .gate__col--b,
+  .gate__col--c {
+    animation: none;
+  }
+}
+@media (max-width: 860px) {
+  .gate__frame {
+    grid-template-columns: 1fr;
+  }
+  .gate__show {
+    display: none;
+  }
+  .gate__brand {
+    padding: 40px 30px 48px;
+  }
+  .gate__hero {
+    max-width: none;
+  }
+  .gate__headline {
+    font-size: 28px;
+  }
+}
+
+/* ---- thin custom scrollbars --------------------------------------------- */
+.scroll-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 8px;
+}
+.scroll-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
