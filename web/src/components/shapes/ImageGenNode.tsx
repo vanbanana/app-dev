@@ -1,9 +1,21 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { useRef, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { Editor } from "tldraw";
-import { ImagePlus, Sparkles, Loader2, RefreshCw, AlertCircle, Wand2 } from "lucide-react";
+import {
+  ImagePlus,
+  Sparkles,
+  Loader2,
+  RefreshCw,
+  AlertCircle,
+  Wand2,
+  Scissors,
+  Download,
+  FolderArchive,
+  Share2,
+  Clock,
+} from "lucide-react";
 import {
   frameHeight,
   ratioToSize,
@@ -11,6 +23,15 @@ import {
   type ImageGenShape,
   type ImageGenStyle,
 } from "./ImageGenShapeUtil";
+import { cropViews, VIEW_LABELS_CN } from "@/lib/crop";
+import {
+  downloadSingleView,
+  downloadAllViews,
+  downloadViewsZip,
+  shareImage,
+} from "@/lib/download";
+import { runGeneration } from "@/lib/generation";
+import { CropOverlay } from "../CropOverlay";
 
 const RATIOS = ["3:2", "2:3", "1:1", "16:9"];
 const STYLE_OPTIONS: { value: ImageGenStyle; label: string }[] = [
@@ -28,17 +49,47 @@ const interactive = {
   onWheel: (e: React.WheelEvent) => e.stopPropagation(),
 } as const;
 
+function baseName(shape: ImageGenShape): string {
+  return `three_view_${shape.id.replace("shape:", "").slice(0, 8)}`;
+}
+
 export function ImageGenNode({ shape, editor }: { shape: ImageGenShape; editor: Editor }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [crops, setCrops] = useState<string[]>([]);
+  const [showCrop, setShowCrop] = useState(false);
   const p = shape.props;
   const fH = frameHeight(p.w, p.ratio);
+
+  // Recompute the three cropped thumbnails whenever the source/splits change.
+  useEffect(() => {
+    let cancelled = false;
+    if (p.status === "done" && p.imageUrl) {
+      cropViews(p.imageUrl, p.splits)
+        .then((c) => {
+          if (!cancelled) setCrops(c);
+        })
+        .catch(() => {
+          if (!cancelled) setCrops([]);
+        });
+    } else {
+      setCrops([]);
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [p.status, p.imageUrl, p.splits]);
 
   function patch(props: Partial<ImageGenShape["props"]>) {
     editor.updateShape<ImageGenShape>({ id: shape.id, type: "image-gen", props });
   }
 
   function setRatio(ratio: string) {
-    patch({ ratio, h: totalHeight(p.w, ratio) });
+    patch({ ratio, h: totalHeight(p.w, ratio, p.status === "done") });
+  }
+
+  function applyManualSplits(splits: number[]) {
+    patch({ splits });
+    setShowCrop(false);
   }
 
   function onPickReference(e: React.ChangeEvent<HTMLInputElement>) {
@@ -51,26 +102,10 @@ export function ImageGenNode({ shape, editor }: { shape: ImageGenShape; editor: 
   }
 
   async function generate() {
-    if (p.status === "generating") return;
-    patch({ status: "generating", error: "" });
-    try {
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          style: p.style,
-          prompt: p.prompt,
-          size: ratioToSize(p.ratio),
-          referenceImage: p.referenceImage || undefined,
-        }),
-      });
-      const data = (await res.json()) as { image?: string; error?: string };
-      if (!res.ok || !data.image) throw new Error(data.error || `请求失败 (${res.status})`);
-      patch({ status: "done", imageUrl: data.image });
-    } catch (err) {
-      patch({ status: "error", error: err instanceof Error ? err.message : "生成失败" });
-    }
+    await runGeneration(editor, shape.id);
   }
+
+  const busy = p.status === "generating" || p.status === "queued";
 
   return (
     <div style={S.root}>
@@ -92,6 +127,11 @@ export function ImageGenNode({ shape, editor }: { shape: ImageGenShape; editor: 
             <Loader2 size={26} style={{ color: "var(--text-dim)", animation: "spin 1s linear infinite" }} />
             <span style={S.hint}>正在生成三视图…</span>
           </div>
+        ) : p.status === "queued" ? (
+          <div style={S.center}>
+            <Clock size={24} style={{ color: "var(--text-dim)" }} />
+            <span style={S.hint}>排队中…</span>
+          </div>
         ) : p.status === "error" ? (
           <div style={S.center}>
             <AlertCircle size={24} style={{ color: "#ff6b6b" }} />
@@ -103,6 +143,58 @@ export function ImageGenNode({ shape, editor }: { shape: ImageGenShape; editor: 
           </div>
         )}
       </div>
+
+      {/* Cropped views strip */}
+      {p.status === "done" && (
+        <div style={S.cropsWrap} {...interactive}>
+          <div style={S.cropsHeader}>
+            <span style={S.cropsTitle}>三视图</span>
+            <div style={S.cropActions}>
+              <ActionIcon title="调整裁切" onClick={() => setShowCrop(true)}>
+                <Scissors size={14} />
+              </ActionIcon>
+              <ActionIcon title="全部下载" onClick={() => void downloadAllViews(p.imageUrl, p.splits, baseName(shape))}>
+                <Download size={14} />
+              </ActionIcon>
+              <ActionIcon title="打包 ZIP" onClick={() => void downloadViewsZip(p.imageUrl, p.splits, baseName(shape))}>
+                <FolderArchive size={14} />
+              </ActionIcon>
+              <ActionIcon title="分享" onClick={() => void shareImage(p.imageUrl, baseName(shape))}>
+                <Share2 size={14} />
+              </ActionIcon>
+            </div>
+          </div>
+          <div style={S.cropsRow}>
+            {[0, 1, 2].map((i) => (
+              <button
+                key={i}
+                {...interactive}
+                style={S.cropCell}
+                title={`下载${VIEW_LABELS_CN[i]}`}
+                onClick={() => void downloadSingleView(p.imageUrl, p.splits, i, baseName(shape))}
+              >
+                <div style={S.cropThumb}>
+                  {crops[i] ? (
+                    <img src={crops[i]} alt={VIEW_LABELS_CN[i]} style={S.cropImg} draggable={false} />
+                  ) : (
+                    <Loader2 size={16} style={{ color: "var(--text-faint)", animation: "spin 1s linear infinite" }} />
+                  )}
+                </div>
+                <span style={S.cropLabel}>{VIEW_LABELS_CN[i]}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {showCrop && (
+        <CropOverlay
+          imageUrl={p.imageUrl}
+          splits={p.splits}
+          onSave={applyManualSplits}
+          onClose={() => setShowCrop(false)}
+        />
+      )}
 
       {/* Prompt panel */}
       <div style={S.panel} {...interactive}>
@@ -148,8 +240,8 @@ export function ImageGenNode({ shape, editor }: { shape: ImageGenShape; editor: 
             <span style={S.model}>
               <Wand2 size={13} style={{ color: "var(--text-dim)" }} /> GPT Image
             </span>
-            <button {...interactive} onClick={generate} style={S.genBtn} disabled={p.status === "generating"}>
-              {p.status === "generating" ? (
+            <button {...interactive} onClick={generate} style={S.genBtn} disabled={busy}>
+              {busy ? (
                 <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} />
               ) : p.status === "done" ? (
                 <RefreshCw size={14} />
@@ -162,6 +254,14 @@ export function ImageGenNode({ shape, editor }: { shape: ImageGenShape; editor: 
         </div>
       </div>
     </div>
+  );
+}
+
+function ActionIcon({ children, onClick, title }: { children: ReactNode; onClick: () => void; title: string }) {
+  return (
+    <button {...interactive} style={S.actionIcon} onClick={onClick} title={title}>
+      {children}
+    </button>
   );
 }
 
@@ -201,12 +301,7 @@ function Dropdown({
 }) {
   return (
     <div style={S.selectWrap} {...interactive}>
-      <select
-        {...interactive}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        style={S.select}
-      >
+      <select {...interactive} value={value} onChange={(e) => onChange(e.target.value)} style={S.select}>
         {options.map((o) => (
           <option key={o} value={o}>
             {o}
@@ -259,6 +354,50 @@ const S: Record<string, CSSProperties> = {
   image: { width: "100%", height: "100%", objectFit: "contain", background: "#fff" },
   center: { display: "flex", flexDirection: "column", alignItems: "center", gap: 10 },
   hint: { fontSize: 12, color: "var(--text-dim)" },
+
+  cropsWrap: { marginTop: 12, height: 92, display: "flex", flexDirection: "column", gap: 6 },
+  cropsHeader: { display: "flex", alignItems: "center", justifyContent: "space-between" },
+  cropsTitle: { fontSize: 12, fontWeight: 500, color: "var(--text-dim)" },
+  cropActions: { display: "flex", alignItems: "center", gap: 4 },
+  actionIcon: {
+    width: 26,
+    height: 26,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 7,
+    border: "1px solid var(--border)",
+    background: "var(--bg-elevated)",
+    color: "var(--text-dim)",
+    cursor: "pointer",
+  },
+  cropsRow: { display: "flex", gap: 8, flex: 1, minHeight: 0 },
+  cropCell: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 4,
+    border: "none",
+    background: "transparent",
+    cursor: "pointer",
+    padding: 0,
+  },
+  cropThumb: {
+    width: "100%",
+    flex: 1,
+    minHeight: 0,
+    borderRadius: 8,
+    background: "#fff",
+    border: "1px solid var(--border)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  cropImg: { width: "100%", height: "100%", objectFit: "contain" },
+  cropLabel: { fontSize: 10.5, color: "var(--text-faint)" },
+
   panel: {
     marginTop: 14,
     flex: 1,

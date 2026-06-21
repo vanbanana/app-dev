@@ -11,12 +11,14 @@ import {
   Pen,
   Type,
   Sparkles,
+  Images,
 } from "lucide-react";
-import { addImageFromFile, createImageGenNode } from "./canvas-actions";
+import { addImageFromFile, createImageGenNode, createImageGenNodesFromFiles } from "./canvas-actions";
 
 export function Toolbar() {
   const editor = useEditor();
   const fileRef = useRef<HTMLInputElement>(null);
+  const batchRef = useRef<HTMLInputElement>(null);
   const tool = useValue("tool", () => editor.getCurrentToolId(), [editor]);
 
   const stop = (e: React.PointerEvent) => e.stopPropagation();
@@ -32,6 +34,9 @@ export function Toolbar() {
         </Btn>
         <Btn onClick={() => fileRef.current?.click()} title="上传图片">
           <ImagePlus size={18} />
+        </Btn>
+        <Btn onClick={() => batchRef.current?.click()} title="批量上传生成三视图">
+          <Images size={18} />
         </Btn>
         <Btn active={tool === "frame"} onClick={() => editor.setCurrentTool("frame")} title="画框">
           <Frame size={18} />
@@ -68,6 +73,18 @@ export function Toolbar() {
         onChange={(e) => {
           const file = e.target.files?.[0];
           if (file) void addImageFromFile(editor, file);
+          e.target.value = "";
+        }}
+      />
+      <input
+        ref={batchRef}
+        type="file"
+        accept="image/*"
+        multiple
+        style={{ display: "none" }}
+        onChange={(e) => {
+          const files = Array.from(e.target.files ?? []);
+          if (files.length) void createImageGenNodesFromFiles(editor, files);
           e.target.value = "";
         }}
       />

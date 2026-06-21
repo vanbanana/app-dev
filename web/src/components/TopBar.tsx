@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, type CSSProperties } from "react";
-import { ChevronDown, Zap, MessagesSquare, Box } from "lucide-react";
+import { ChevronDown, Zap, MessagesSquare, Box, History, Settings } from "lucide-react";
+import { setOpenPanel, useOpenPanel } from "@/lib/ui-store";
 
 export function TopBar() {
   const [name, setName] = useState("Untitled");
+  const open = useOpenPanel();
 
   return (
     <div style={S.wrap}>
@@ -23,6 +25,22 @@ export function TopBar() {
       </div>
 
       <div style={S.right}>
+        <button
+          style={{ ...S.iconPill, ...(open === "history" ? S.iconPillActive : null) }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => setOpenPanel("history")}
+          title="历史记录"
+        >
+          <History size={15} />
+        </button>
+        <button
+          style={{ ...S.iconPill, ...(open === "settings" ? S.iconPillActive : null) }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => setOpenPanel("settings")}
+          title="设置"
+        >
+          <Settings size={15} />
+        </button>
         <div style={S.credits}>
           <Zap size={13} style={{ color: "#cfcfd3" }} fill="#cfcfd3" />
           <span style={{ fontVariantNumeric: "tabular-nums" }}>30</span>
@@ -83,12 +101,26 @@ const S: Record<string, CSSProperties> = {
     width: 96,
   },
   right: { display: "flex", alignItems: "center", gap: 10, pointerEvents: "all" },
+  iconPill: {
+    width: 34,
+    height: 34,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+    background: "var(--bar-grad)",
+    border: "1px solid var(--border)",
+    boxShadow: "var(--shadow-soft)",
+    color: "var(--text-dim)",
+    cursor: "pointer",
+  },
+  iconPillActive: { background: "var(--bg-hover)", color: "var(--text)" },
   credits: { ...pill, gap: 6, fontWeight: 600 },
   avatar: {
     width: 30,
     height: 30,
     borderRadius: "50%",
-    background: "linear-gradient(135deg, #4a4a4f 0%, #1d1d20 100%)",
+    background: "#33333a",
     border: "1px solid var(--border-strong)",
     display: "inline-flex",
     alignItems: "center",

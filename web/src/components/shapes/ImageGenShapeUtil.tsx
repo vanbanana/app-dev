@@ -11,7 +11,7 @@ import {
 import { ImageGenNode } from "./ImageGenNode";
 
 export type ImageGenStyle = "realistic" | "chibi";
-export type ImageGenStatus = "idle" | "generating" | "done" | "error";
+export type ImageGenStatus = "idle" | "queued" | "generating" | "done" | "error";
 
 export type ImageGenShape = TLBaseShape<
   "image-gen",
@@ -25,6 +25,9 @@ export type ImageGenShape = TLBaseShape<
     imageUrl: string;
     referenceImage: string;
     error: string;
+    /** two split fractions (0..1) separating front/side/top; empty = uncropped */
+    splits: number[];
+    createdAt: number;
   }
 >;
 
@@ -33,6 +36,7 @@ export const TITLE_H = 22;
 export const GAP_1 = 8;
 export const GAP_2 = 14;
 export const PANEL_H = 182;
+export const CROPS_H = 104;
 
 export function ratioParts(ratio: string): [number, number] {
   const [a, b] = ratio.split(":").map((n) => Number(n));
@@ -45,8 +49,15 @@ export function frameHeight(width: number, ratio: string): number {
   return Math.round((width * h) / w);
 }
 
-export function totalHeight(width: number, ratio: string): number {
-  return TITLE_H + GAP_1 + frameHeight(width, ratio) + GAP_2 + PANEL_H;
+export function totalHeight(width: number, ratio: string, hasCrops = false): number {
+  return (
+    TITLE_H +
+    GAP_1 +
+    frameHeight(width, ratio) +
+    (hasCrops ? CROPS_H : 0) +
+    GAP_2 +
+    PANEL_H
+  );
 }
 
 export function ratioToSize(ratio: string): string {
@@ -71,10 +82,12 @@ export class ImageGenShapeUtil extends BaseBoxShapeUtil<ImageGenShape> {
     prompt: T.string,
     style: T.literalEnum("realistic", "chibi"),
     ratio: T.string,
-    status: T.literalEnum("idle", "generating", "done", "error"),
+    status: T.literalEnum("idle", "queued", "generating", "done", "error"),
     imageUrl: T.string,
     referenceImage: T.string,
     error: T.string,
+    splits: T.arrayOf(T.number),
+    createdAt: T.number,
   };
 
   override getDefaultProps(): ImageGenShape["props"] {
@@ -88,6 +101,8 @@ export class ImageGenShapeUtil extends BaseBoxShapeUtil<ImageGenShape> {
       imageUrl: "",
       referenceImage: "",
       error: "",
+      splits: [],
+      createdAt: Date.now(),
     };
   }
 

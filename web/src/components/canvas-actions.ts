@@ -1,19 +1,74 @@
 import { AssetRecordType, createShapeId, type Editor, type TLShapeId } from "tldraw";
-import { NODE_W, totalHeight } from "./shapes/ImageGenShapeUtil";
+import { NODE_W, totalHeight, type ImageGenShape } from "./shapes/ImageGenShapeUtil";
+import { getSettings } from "@/lib/settings";
+import { runGeneration } from "@/lib/generation";
 
 /** Creates a new Image Generator node at the center of the current viewport. */
 export function createImageGenNode(editor: Editor): TLShapeId {
   const id = createShapeId();
   const center = editor.getViewportPageBounds().center;
-  const h = totalHeight(NODE_W, "3:2");
-  editor.createShape({
+  const { defaultStyle, defaultRatio } = getSettings();
+  const h = totalHeight(NODE_W, defaultRatio);
+  editor.createShape<ImageGenShape>({
     id,
     type: "image-gen",
     x: center.x - NODE_W / 2,
     y: center.y - h / 2,
-    props: { w: NODE_W, h },
+    props: { w: NODE_W, h, style: defaultStyle, ratio: defaultRatio, createdAt: Date.now() },
   });
   return id;
+}
+
+function readAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Batch upload: creates one Image Generator node per image (laid out in a grid),
+ * each pre-filled with the image as reference, then kicks off generation for all
+ * of them through the shared concurrency queue.
+ */
+export async function createImageGenNodesFromFiles(editor: Editor, files: File[]): Promise<void> {
+  const { defaultStyle, defaultRatio } = getSettings();
+  const h = totalHeight(NODE_W, defaultRatio);
+  const gapX = NODE_W + 60;
+  const gapY = h + 60;
+  const cols = Math.ceil(Math.sqrt(files.length));
+  const origin = editor.getViewportPageBounds().center;
+  const startX = origin.x - ((Math.min(cols, files.length) - 1) * gapX) / 2 - NODE_W / 2;
+  const startY = origin.y - h / 2;
+
+  const ids: TLShapeId[] = [];
+  for (let i = 0; i < files.length; i++) {
+    const dataUrl = await readAsDataUrl(files[i]);
+    const id = createShapeId();
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    editor.createShape<ImageGenShape>({
+      id,
+      type: "image-gen",
+      x: startX + col * gapX,
+      y: startY + row * gapY,
+      props: {
+        w: NODE_W,
+        h,
+        style: defaultStyle,
+        ratio: defaultRatio,
+        referenceImage: dataUrl,
+        createdAt: Date.now(),
+      },
+    });
+    ids.push(id);
+  }
+
+  editor.select(...ids);
+  editor.zoomToSelection({ animation: { duration: 200 } });
+  ids.forEach((id) => void runGeneration(editor, id));
 }
 
 function loadImageSize(src: string): Promise<{ w: number; h: number }> {

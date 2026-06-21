@@ -8,11 +8,21 @@ import { createImageGenNode } from "./canvas-actions";
 import { TopBar } from "./TopBar";
 import { Toolbar } from "./Toolbar";
 import { ZoomControl } from "./ZoomControl";
+import { HistoryPanel } from "./HistoryPanel";
+import { SettingsPanel } from "./SettingsPanel";
+import { useOpenPanel } from "@/lib/ui-store";
 
 const customShapeUtils = [ImageGenShapeUtil];
 
 function TextureBackground() {
   return <div className="canvas-texture" />;
+}
+
+function Panels() {
+  const open = useOpenPanel();
+  if (open === "history") return <HistoryPanel />;
+  if (open === "settings") return <SettingsPanel />;
+  return null;
 }
 
 const components: TLComponents = {
@@ -37,6 +47,7 @@ export default function Canvas() {
     <div style={{ position: "fixed", inset: 0 }}>
       <Tldraw
         hideUi
+        persistenceKey="atelier-canvas"
         shapeUtils={customShapeUtils}
         components={components}
         onMount={handleMount}
@@ -44,6 +55,7 @@ export default function Canvas() {
         <TopBar />
         <Toolbar />
         <ZoomControl />
+        <Panels />
       </Tldraw>
     </div>
   );
